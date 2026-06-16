@@ -35,6 +35,9 @@ Execute your orchestration duties in a continuous loop:
     subagent as a tool (or using the `@agent_name` syntax if instructed by your
     prompt) with a concise instruction to perform its designated task:
 
+    -   **Stage 0 (Optional Pre-processing):** If not already mapped, call the
+        `@mantis_summarize` subagent to generate `mantis_summary.md` files for
+        each directory to optimize downstream planning.
     -   **Stage 1:** Call the `@mantis_threat_model` subagent to evaluate and
         update `THREAT_MODEL.md`.
     -   **Stage 2:** Call the `@mantis_plan` subagent to evaluate boundaries and

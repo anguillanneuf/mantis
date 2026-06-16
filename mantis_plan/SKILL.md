@@ -41,8 +41,11 @@ Execute the planning stage as follows:
         the `plan.json` manually in your text response. Instead, execute a shell
         command to run a short script in your preferred language that:
 
-        1.  Uses `find` or `os.walk` to crawl all production source code files
-            (e.g., `.c`, `.cpp`, `.py`, `.js`, `.go`, `.rs`, `.java`).
+        1.  Uses `find` or `os.walk` to crawl all production directories. If a
+            `mantis_summary.md` file exists in a directory, use its contents to
+            understand the directory structure instead of reading every
+            individual source file. Otherwise, crawl all production source code
+            files (e.g., `.c`, `.cpp`, `.py`, `.js`, `.go`, `.rs`, `.java`).
         2.  Ignores test folders, build artifacts, and vendor dependencies
             (e.g., `node_modules`, `.git`, `tests/`).
         3.  Programmatically formats the list into the `plan.json` schema and

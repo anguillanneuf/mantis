@@ -63,6 +63,7 @@ graph TD
     Meta["/mantis_meta_agent (Supervisor)"]
 
     subgraph "Continuous Review Loop"
+        Sum["/mantis_summarize (Optional)"]
         TM["/mantis_threat_model"]
         Plan["/mantis_plan"]
         Res["/mantis_researcher"]
@@ -74,12 +75,14 @@ graph TD
         Cal["/mantis_calibrate"]
     end
 
+    FileSum[("mantis_summary.md")]
     FileTM[("THREAT_MODEL.md")]
     FilePlan[("plan.json")]
     FileFind[("workspace/findings/*.json")]
     FileLearn[("learnings.jsonl")]
 
-    Meta --> TM
+    Meta --> Sum
+    Sum --> TM
     TM --> Plan
     Plan --> Res
     Res --> Ded
@@ -91,6 +94,7 @@ graph TD
     Cal --> Arch[/"Archive Findings"/]
     Arch -.->|Next Loop Iteration| TM
 
+    Sum -.->|Generates| FileSum
     TM -.->|Generates| FileTM
     Plan -.->|Generates| FilePlan
 
@@ -109,31 +113,35 @@ graph TD
 1.  **`/mantis_meta_agent` (Supervisor):** A persistent, overarching agent that
     launches the continuous loop, monitors execution, handles errors, reports
     findings, and archives the `workspace/findings/` directory between loops.
-2.  **`/mantis_threat_model` (Threat Modeler):** Evaluates `learnings.jsonl`
+2.  **`/mantis_summarize` (Summarizer):** An optional pre-processing step that
+    generates a `mantis_summary.md` for each directory, providing a quick
+    reference map to optimize downstream planning and research.
+3.  **`/mantis_threat_model` (Threat Modeler):** Evaluates `learnings.jsonl`
     against codebase structure to establish or refine a living
     `THREAT_MODEL.md`.
-3.  **`/mantis_plan` (Strategist):** Scans workspace boundaries, target files,
-    and `THREAT_MODEL.md` to output a targeted review strategy into `plan.json`.
-4.  **`/mantis_researcher` (Mantis Researcher):** Executes file-by-file triage
+4.  **`/mantis_plan` (Strategist):** Scans workspace boundaries, target files
+    (using `mantis_summary.md` maps when available), and `THREAT_MODEL.md` to
+    output a targeted review strategy into `plan.json`.
+5.  **`/mantis_researcher` (Mantis Researcher):** Executes file-by-file triage
     and deep security flaw reviews, outputting hotspots as individual JSON files
     in `workspace/findings/`.
-5.  **`/mantis_dedupe` (Deduplicator):** Groups index-based duplicate findings,
+6.  **`/mantis_dedupe` (Deduplicator):** Groups index-based duplicate findings,
     merging records and deleting redundancies within `workspace/findings/`.
-6.  **`/mantis_review` (Validator):** Filters out false positives using strict
+7.  **`/mantis_review` (Validator):** Filters out false positives using strict
     pragmatic constraints, updating the status in
     `workspace/findings/<id>.json`.
-7.  **`/mantis_critic` (Critic):** Verifies release-build crash reproducibility
+8.  **`/mantis_critic` (Critic):** Verifies release-build crash reproducibility
     (ignoring debug/assert checks), updates production viability in
     `workspace/findings/<id>.json`, and appends false positives/non-viable paths
     to `learnings.jsonl`.
-8.  **`/mantis_reproduce` (Proof-of-Concept Developer):** Writes
+9.  **`/mantis_reproduce` (Proof-of-Concept Developer):** Writes
     Proof-of-Concept Reproduction Scripts (Repros) or raw payloads, executes
     them in isolated environments such as gVisor or Virtual Machines, and
     updates reproduction status in `workspace/findings/<id>.json`.
-9.  **`/mantis_patch` (Patcher):** Generates and applies code fixes, runs
+10. **`/mantis_patch` (Patcher):** Generates and applies code fixes, runs
     post-patch validation tests inside the sandbox, updates patch status in
     `workspace/findings/<id>.json`, and appends logs to `learnings.jsonl`.
-10. **`/mantis_calibrate` (Risk Calibrator):** Calculates a final numerical
+11. **`/mantis_calibrate` (Risk Calibrator):** Calculates a final numerical
     Mantis Risk Score (1-10) for each finding in the workspace directory based
     on impact, evidence, and viability, appending the results directly to each
     `workspace/findings/<id>.json` file.
@@ -273,6 +281,9 @@ CLI terminal.
 2.  Inside the interactive UI prompt, type the skills sequentially:
 
     ```text
+    # 0. (Optional) Generate mantis_summary.md directory maps
+    /mantis_summarize
+
     # 1. Iteratively develop the project's living threat model
     /mantis_threat_model
 
