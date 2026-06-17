@@ -56,16 +56,31 @@ Execute the planning stage as follows:
             questions for Mode B.
 
     -   **MODE B: Strategic Learning Mode (`learnings.jsonl` exists):** Read
-        `learnings.jsonl` to review previously analyzed files, findings, and
-        repair statuses. Adapt your focus to design new, targeted deep dives
-        (e.g., tracing complex untrusted data flow across files, reviewing
-        adjacent components, regression reviews) rather than repeating
-        exhaustive file-by-file reviews. List the contents of the directory to
-        explore specific areas. You may generate the `plan.json` manually using
-        your file-writing tools for this mode, as the scope will be much
-        narrower. **Token Optimization:** Whether using a script (Mode A) or
-        your file-writing tools (Mode B), write the plan directly to disk and do
-        not print the JSON contents in your chat response.
+        `learnings.jsonl` and `historical_learnings.jsonl` (if available) to
+        review previously analyzed files, findings, repair statuses, and
+        historical vulnerabilities and security fixes. Adapt your focus to
+        design new, targeted deep dives and regression reviews for components
+        and files that have histories of vulnerabilities (e.g., tracing complex
+        untrusted data flow across files, reviewing adjacent components with
+        past fixes) than repeating exhaustive file-by-file reviews. List the
+        contents of the directory to explore specific areas. You may generate
+        the `plan.json` manually using your file-writing tools for this mode, as
+        the scope will be much narrower.
+
+        -   **Exploratory/Unconstrained Investigations (Low Probability):** With
+            a low probability (e.g., a 15-20% chance per planning pass), include
+            an exploratory investigation in the plan. Select a component or
+            directory that the threat model currently marks as safe, low-risk,
+            or out of scope, or a component that has not received recent
+            scrutiny. The question for this investigation must explicitly
+            instruct the researcher to perform an unconstrained, adversarial
+            sweep, ignoring all existing safety assumptions and trust boundary
+            definitions in `THREAT_MODEL.md`. It should instruct the agent to
+            assume boundaries can be violated and hunt for novel bypasses, logic
+            flaws, or memory corruptions from scratch. **Token Optimization:**
+            Whether using a script (Mode A) or your file-writing tools (Mode B),
+            write the plan directly to disk and do not print the JSON contents
+            in your chat response.
 
 3.  **Schema Enforcement:** Regardless of the mode, the final `plan.json` file
     written to disk should match the following schema to ensure downstream

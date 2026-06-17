@@ -38,14 +38,19 @@ Execute the threat modeling process as follows:
     -   Read `learnings.jsonl` (if it exists). This file contains the empirical
         truths of the codebase—what security flaws have actually been
         reproduced, patched, or proven to be false positives.
+    -   Read `historical_learnings.jsonl` (if it exists). This file contains
+        historical vulnerabilities and past fixes extracted from the
+        repository's version control system (VCS) history.
 
 2.  **Analyze and Synthesize:**
 
-    -   Evaluate how recent findings from `learnings.jsonl` affect the existing
-        trust boundaries. Did a verified crash reproducer demonstrate a bypass
-        of a boundary we previously thought was secure?
+    -   Evaluate how recent findings from `learnings.jsonl` and historical
+        findings from `historical_learnings.jsonl` affect the existing trust
+        boundaries. Did a verified crash reproducer or a past vulnerability
+        demonstrate a bypass of a boundary we previously thought was secure?
     -   Identify new high-risk assets, flawed components, or repeated failure
-        vectors (e.g., "The parser module consistently suffers from OOB reads").
+        vectors (e.g., "The parser module consistently suffers from OOB reads",
+        or past fixes show structural weaknesses).
 
 3.  **Write/Update the Threat Model:** Write a comprehensive, structured
     Markdown file and save it directly to `THREAT_MODEL.md` (overwriting the old
@@ -63,10 +68,11 @@ Execute the threat modeling process as follows:
     -   **Threat Actors & Vectors:** Potential untrusted input sources (e.g.,
         untrusted local user, remote network untrusted input source).
     -   **Empirical Learnings (Living Section):** A dedicated section
-        summarizing the structural weaknesses proven by recent `learnings.jsonl`
-        data. Use this to explicitly warn the `/mantis_plan` and
-        `/mantis_researcher` agents about areas that require ongoing resilience
-        scrutiny.
+        summarizing structural weaknesses proven by recent `learnings.jsonl`
+        data and historical weaknesses/fixes extracted from
+        `historical_learnings.jsonl`. Use this to explicitly warn the
+        `/mantis_plan` and `/mantis_researcher` agents about areas that have
+        histories of vulnerabilities and require ongoing resilience scrutiny.
 
 Save your final output directly to `THREAT_MODEL.md`. When complete, notify the
 user.

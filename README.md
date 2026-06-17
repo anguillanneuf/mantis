@@ -113,35 +113,41 @@ graph TD
 1.  **`/mantis_meta_agent` (Supervisor):** A persistent, overarching agent that
     launches the continuous loop, monitors execution, handles errors, reports
     findings, and archives the `workspace/findings/` directory between loops.
-2.  **`/mantis_summarize` (Summarizer):** An optional pre-processing step that
-    generates a `mantis_summary.md` for each directory, providing a quick
-    reference map to optimize downstream planning and research.
-3.  **`/mantis_threat_model` (Threat Modeler):** Evaluates `learnings.jsonl`
-    against codebase structure to establish or refine a living
-    `THREAT_MODEL.md`.
-4.  **`/mantis_plan` (Strategist):** Scans workspace boundaries, target files
+2.  **`/mantis_history` (History Extractor):** An optional pre-processing step
+    that analyzes the repository's version control system (VCS) history to
+    extract past vulnerabilities, security fixes, and vulnerability patterns,
+    saving findings to `historical_learnings.jsonl` to inform subsequent
+    summarization, threat modeling, and planning.
+3.  **`/mantis_summarize` (Summarizer):** An optional pre-processing step that
+    generates a `mantis_summary.md` for each directory, reading past
+    vulnerabilities from `historical_learnings.jsonl` to enrich summaries and
+    provide a quick reference map to optimize downstream planning and research.
+4.  **`/mantis_threat_model` (Threat Modeler):** Evaluates `learnings.jsonl` and
+    `historical_learnings.jsonl` against codebase structure to establish or
+    refine a living `THREAT_MODEL.md`.
+5.  **`/mantis_plan` (Strategist):** Scans workspace boundaries, target files
     (using `mantis_summary.md` maps when available), and `THREAT_MODEL.md` to
     output a targeted review strategy into `plan.json`.
-5.  **`/mantis_researcher` (Mantis Researcher):** Executes file-by-file triage
+6.  **`/mantis_researcher` (Mantis Researcher):** Executes file-by-file triage
     and deep security flaw reviews, outputting hotspots as individual JSON files
     in `workspace/findings/`.
-6.  **`/mantis_dedupe` (Deduplicator):** Groups index-based duplicate findings,
+7.  **`/mantis_dedupe` (Deduplicator):** Groups index-based duplicate findings,
     merging records and deleting redundancies within `workspace/findings/`.
-7.  **`/mantis_review` (Validator):** Filters out false positives using strict
+8.  **`/mantis_review` (Validator):** Filters out false positives using strict
     pragmatic constraints, updating the status in
     `workspace/findings/<id>.json`.
-8.  **`/mantis_critic` (Critic):** Verifies release-build crash reproducibility
+9.  **`/mantis_critic` (Critic):** Verifies release-build crash reproducibility
     (ignoring debug/assert checks), updates production viability in
     `workspace/findings/<id>.json`, and appends false positives/non-viable paths
     to `learnings.jsonl`.
-9.  **`/mantis_reproduce` (Proof-of-Concept Developer):** Writes
+10. **`/mantis_reproduce` (Proof-of-Concept Developer):** Writes
     Proof-of-Concept Reproduction Scripts (Repros) or raw payloads, executes
     them in isolated environments such as gVisor or Virtual Machines, and
     updates reproduction status in `workspace/findings/<id>.json`.
-10. **`/mantis_patch` (Patcher):** Generates and applies code fixes, runs
+11. **`/mantis_patch` (Patcher):** Generates and applies code fixes, runs
     post-patch validation tests inside the sandbox, updates patch status in
     `workspace/findings/<id>.json`, and appends logs to `learnings.jsonl`.
-11. **`/mantis_calibrate` (Risk Calibrator):** Calculates a final numerical
+12. **`/mantis_calibrate` (Risk Calibrator):** Calculates a final numerical
     Mantis Risk Score (1-10) for each finding in the workspace directory based
     on impact, evidence, and viability, appending the results directly to each
     `workspace/findings/<id>.json` file.
@@ -281,37 +287,40 @@ CLI terminal.
 2.  Inside the interactive UI prompt, type the skills sequentially:
 
     ```text
-    # 0. (Optional) Generate mantis_summary.md directory maps
+    # 0. (Optional) Analyze repository's version control system (VCS) history and extract past vulnerabilities
+    /mantis_history
+
+    # 1. (Optional) Generate mantis_summary.md directory maps
     /mantis_summarize
 
-    # 1. Iteratively develop the project's living threat model
+    # 2. Iteratively develop the project's living threat model
     /mantis_threat_model
 
-    # 2. Map target external boundary and build scanning roadmap
+    # 3. Map target external boundary and build scanning roadmap
     /mantis_plan
 
-    # 3. Run multi-threaded/sequential security flaw sweep
+    # 4. Run multi-threaded/sequential security flaw sweep
     /mantis_researcher
 
-    # 4. Consolidate overlapping files and duplicate bugs
+    # 5. Consolidate overlapping files and duplicate bugs
     /mantis_dedupe
 
-    # 5. Verify code validity & filter false positives
+    # 6. Verify code validity & filter false positives
     /mantis_review
 
-    # 6. Eliminate non-viable production issues
+    # 7. Eliminate non-viable production issues
     /mantis_critic
 
-    # 7. Generate proof-of-concept crash reproducers and run them in sandboxes
+    # 8. Generate proof-of-concept crash reproducers and run them in sandboxes
     /mantis_reproduce
 
-    # 8. Apply minimal fixes and verify they block the crash reproducer
+    # 9. Apply minimal fixes and verify they block the crash reproducer
     /mantis_patch
 
-    # 9. Calculate final matrix risk ratings and append to individual findings
+    # 10. Calculate final matrix risk ratings and append to individual findings
     /mantis_calibrate
 
-    # 10. (Manual Step) Move workspace/findings/ to an archive directory before starting the next loop
+    # 11. (Manual Step) Move workspace/findings/ to an archive directory before starting the next loop
     ```
 
 --------------------------------------------------------------------------------

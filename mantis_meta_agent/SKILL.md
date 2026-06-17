@@ -35,31 +35,37 @@ Execute your orchestration duties in a continuous loop:
     subagent as a tool (or using the `@agent_name` syntax if instructed by your
     prompt) with a concise instruction to perform its designated task:
 
-    -   **Stage 0 (Optional Pre-processing):** If not already mapped, call the
-        `@mantis_summarize` subagent to generate `mantis_summary.md` files for
-        each directory to optimize downstream planning.
-    -   **Stage 1:** Call the `@mantis_threat_model` subagent to evaluate and
+    -   **Stage 0 (Pre-processing History):** Call the `@mantis_history`
+        subagent to analyze repository's version control system (VCS) history
+        and extract past vulnerabilities and security fixes into a
+        `historical_learnings.jsonl` file.
+    -   **Stage 1 (Optional Pre-processing Summaries):** If not already mapped,
+        call the `@mantis_summarize` subagent to generate `mantis_summary.md`
+        files for each directory, reading past vulnerabilities from
+        `historical_learnings.jsonl` to optimize downstream planning and
+        summaries with historical context.
+    -   **Stage 2:** Call the `@mantis_threat_model` subagent to evaluate and
         update `THREAT_MODEL.md`.
-    -   **Stage 2:** Call the `@mantis_plan` subagent to evaluate boundaries and
+    -   **Stage 3:** Call the `@mantis_plan` subagent to evaluate boundaries and
         generate `plan.json`.
-    -   **Stage 3:** Call the `@mantis_researcher` subagent to perform the deep
+    -   **Stage 4:** Call the `@mantis_researcher` subagent to perform the deep
         code sweep and populate the `workspace/findings/` directory.
-    -   **Stage 4:** Call the `@mantis_dedupe` subagent to deduplicate files in
+    -   **Stage 5:** Call the `@mantis_dedupe` subagent to deduplicate files in
         the `workspace/findings/` directory.
-    -   **Stage 5:** Call the `@mantis_review` subagent to evaluate findings in
+    -   **Stage 6:** Call the `@mantis_review` subagent to evaluate findings in
         the `workspace/findings/` directory.
-    -   **Stage 6:** Call the `@mantis_critic` subagent to check production
+    -   **Stage 7:** Call the `@mantis_critic` subagent to check production
         viability of files in the `workspace/findings/` directory, and update
         `learnings.jsonl`.
-    -   **Stage 7:** Call the `@mantis_reproduce` subagent to develop crash
+    -   **Stage 8:** Call the `@mantis_reproduce` subagent to develop crash
         reproducers and update files in the `workspace/findings/` directory.
-    -   **Stage 8:** Call the `@mantis_patch` subagent to verify fixes and
+    -   **Stage 9:** Call the `@mantis_patch` subagent to verify fixes and
         update files in the `workspace/findings/` directory, and update
         `learnings.jsonl`.
-    -   **Stage 9:** Call the `@mantis_calibrate` subagent to read the
+    -   **Stage 10:** Call the `@mantis_calibrate` subagent to read the
         `workspace/findings/` directory and append final calibration metrics to
         each finding file.
-    -   **Stage 10:** Archive the `workspace/findings/` directory (e.g., move it
+    -   **Stage 11:** Archive the `workspace/findings/` directory (e.g., move it
         to `workspace/archive/findings_pass_N/`) to ensure the next loop
         iteration starts with a clean slate and does not waste tokens
         re-evaluating old findings that have already been finalized.
@@ -93,7 +99,7 @@ Execute your orchestration duties in a continuous loop:
         specific findings if the user requests more detail without interrupting
         the main loop logic.
 
-5.  **Resilience & Persistence:** When Stage 10 completes and you have output
+5.  **Resilience & Persistence:** When Stage 11 completes and you have output
     your summary, immediately begin the next pass. Chain your tool calls
     automatically. However, if you encounter a permanent, non-recoverable error
     (e.g., a persistent environment failure or fundamentally broken pipeline

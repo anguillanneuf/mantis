@@ -51,12 +51,14 @@ Execute the summarize stage as follows:
         generate per-file summaries or operate in more efficient chunks to avoid
         passing too many tokens for the LLM to handle.
 
-2.  **Generate the Security Summary (Map-Reduce):** The script should instruct
-    the LLM or agent tool to generate a concise, security-focused summary of the
-    directory. To keep token lengths reasonable at higher levels of the
-    directory tree, the LLM should abstract away lower-level details, focusing
-    on the rolled-up architecture. The prompt used by your script should ask
-    for:
+2.  **Generate the Security Summary (Map-Reduce):** The script should read
+    `historical_learnings.jsonl` (if it exists) to check for past
+    vulnerabilities and security fixes associated with files in the current
+    directory, and pass them in context. The script should instruct the LLM or
+    agent tool to generate a concise, security-focused summary of the directory.
+    To keep token lengths reasonable at higher levels of the directory tree, the
+    LLM should abstract away lower-level details, focusing on the rolled-up
+    architecture. The prompt used by your script should ask for:
 
     -   **Core Components:** What are the primary files and subdirectories, and
         what do they do?
@@ -66,6 +68,11 @@ Execute the summarize stage as follows:
         untrusted data, network requests, or user input?
     -   **Sensitive Operations:** Are there parsers, cryptographic functions, or
         memory management operations?
+    -   **Historical Vulnerabilities & Fixes:** What files or components in this
+        directory have historical vulnerabilities or security-related fixes
+        recorded in `historical_learnings.jsonl`? Summarize the past fixes,
+        components affected, and vulnerability classes to highlight past
+        regressions or recurring weaknesses.
 
     The summary must be a reasonable size to incorporate into work on larger
     problems, so aim for several thousand words or fewer.

@@ -74,7 +74,19 @@ Execute the research stage as follows:
         input constraints, properly manages bounds, and checks sizes.
     -   Flag any discrepancies as contract alignment bugs or missing checks.
 
-4.  **Compile and Write Findings:** Instead of a single monolithic file, create
+4.  **Unconstrained / Exploratory Investigations:** If the investigation plan in
+    `plan.json` contains instructions or a question explicitly asking for an
+    unconstrained sweep or adversarial audit (ignoring existing assumptions):
+
+    -   Ignore existing assumptions of safety and documented trust boundaries in
+        `THREAT_MODEL.md`.
+    -   Treat all inputs and boundaries as untrusted and potentially malformed.
+    -   Analyze implementation from scratch with full freedom and autonomy,
+        searching for any bypasses, logic flaws, or memory corruptions
+        regardless of whether the component is thought to be safe or out of
+        scope.
+
+5.  **Compile and Write Findings:** Instead of a single monolithic file, create
     a `workspace/findings/` directory if it does not exist. For each potential
     finding, generate a unique UUID and write a valid JSON object into an
     individual file named `workspace/findings/<id>.json`. This keeps findings
