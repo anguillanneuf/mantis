@@ -74,12 +74,11 @@ Execute the patching and verification stage as follows:
         **Re-attack**: assume the patch is flawed and explicitly attempt to
         write a new reproducer variant that bypasses your patch to reach the
         same root cause. Only if the re-attack also fails to bypass the fix
-        should you mark the patch as fully successful! (Note: for true
-        independence in a programmatic harness, this re-attack step should
-        ideally be delegated to a fresh `/mantis_reproduce` agent against the
-        patched code. The harness must map the fresh agent's output into the
-        `reattack_*` schema fields to prevent overwriting the initial `repro_*`
-        evidence. In standalone mode, write these `reattack_*` fields directly).
+        should you mark the patch as fully successful! To ensure true
+        independence, launch a fresh `@mantis_reproduce` subagent against the
+        patched code to perform this re-attack. You must map the fresh agent's
+        output into the `reattack_*` schema fields to prevent overwriting the
+        initial `repro_*` evidence.
     -   **VERIFICATION FAILED:** If the sandbox execution still triggers the
         bug, or if your re-attack successfully bypasses your patch, the patch is
         insufficient. Re-evaluate and adapt your fix.

@@ -105,6 +105,7 @@ graph TD
     Rev --> Cri
     Cri --> Rep
     Rep --> Pat
+    Pat -.->|Re-attack Bypass Loop| Rep
     Pat --> Cal
     Cal --> Ref
     Ref -.->|Next Loop Iteration| Arch

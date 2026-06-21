@@ -74,8 +74,11 @@ Execute your orchestration duties in a continuous loop:
     -   **Stage 9 (Reproduce):** Call the `@mantis_reproduce` subagent to
         develop crash reproducers and update files in the `workspace/findings/`
         directory.
-    -   **Stage 10 (Patch):** Call the `@mantis_patch` subagent to verify fixes
-        and update files in the `workspace/findings/` directory.
+    -   **Stage 10 (Patch & Verify):** Call the `@mantis_patch` subagent to
+        generate fixes, and update files in the `workspace/findings/` directory.
+        Instruct it to repeatedly call a fresh `@mantis_reproduce` subagent
+        against its patches to attempt a bypass, refining the fix until the
+        reproducer can no longer bypass it.
     -   **Stage 11 (Calibrate):** Call the `@mantis_calibrate` subagent to read
         the `workspace/findings/` directory and append final calibration metrics
         to each finding file.

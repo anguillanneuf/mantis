@@ -103,6 +103,7 @@ graph TD
     Harness --> C
     Harness --> Rep
     Harness --> Pat
+    Pat -.->|Re-attack Bypass Loop| Rep
     Harness --> Cal
     Harness --> Ref
 
