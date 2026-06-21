@@ -48,7 +48,11 @@ Execute the reproduction stage under these constraints:
     payload (e.g., `crash.payload`) that triggers the target bug. To run your
     script or payload, use the execution or containerization tools available in
     your environment to execute the code safely. Select the most appropriate
-    runtime image and flags for the target language.
+    runtime image and flags for the target. **Execute your reproduction using
+    the appropriate environment:** If the target is firmware, you may write a
+    script to boot it via `qemu`, `unicorn`, or Firmadyne. If it's a binary, you
+    may use dynamic instrumentation or standard execution. Use your best
+    judgment to construct a working harness for the artifact.
 
     -   *Optional Parallel Trajectory Search:* If your environment or agent
         framework supports spawning subagents, you can deploy multiple

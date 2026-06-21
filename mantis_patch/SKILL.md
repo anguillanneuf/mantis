@@ -33,23 +33,38 @@ Execute the patching and verification stage as follows:
 
 2.  **Generate and Apply Minimal Patches:** For each reproduced security flaw:
 
+    -   **Target Agnosticism (Binaries vs Source):** If the target is source
+        code, proceed with generating and applying a code patch as described
+        below. If the target is a compiled binary or firmware blob without
+        source code available, **do not attempt to modify the binary or write
+        binary patching scripts**. Instead, skip the file
+        backup/modification/diff steps and generate a general, high-level
+        recommendation for how this issue could be mitigated in a production
+        environment without requiring deep technical depth. Output this
+        mitigation string in place of the `patch_diff` field.
+
     -   *Optional Parallel Trajectory Search:* If your framework supports
         subagents, you may spawn multiple concurrent subagents to design diverse
         patch implementations. Test all generated patches that successfully
         secure the code without breaking standard functionality, and select the
         *best* patch (e.g., the most minimal, readable, and idiomatic fix)
         rather than just the first one that works.
+
     -   Read the original flawed file to grasp function dependencies and
         structures.
+
     -   Design a minimal, correct patch to mitigate the security flaw (e.g.
         adding bound checks, validating sizes, inserting NUL-terminators)
         without breaking other features.
+
     -   **Backup First:** Create a copy of the target file appending `.bak` to
         its filename to allow robust recovery in case the patch breaks
         compilation or functionality.
+
     -   Replace the file content with your generated patched code.
 
-3.  **Post-Patch Verification Run:** To confirm the patch works, re-run the
+3.  **Post-Patch Verification Run:** *(Skip this step for binary-only targets
+    where no code patch was applied)*. To confirm the patch works, re-run the
     reproducer script inside your isolated execution environment. Use the exact
     `"repro_file_path"` and `"run_command"` from the reproduction entry to
     verify the patch.
@@ -69,9 +84,10 @@ Execute the patching and verification stage as follows:
         bug, or if your re-attack successfully bypasses your patch, the patch is
         insufficient. Re-evaluate and adapt your fix.
 
-4.  **Extract Patch and Restore Codebase:** Do not leave the codebase in an
-    altered state. Once you have a final outcome (either `VERIFIED_SECURE` or
-    you have exhausted your retries), you must:
+4.  **Extract Patch and Restore Codebase:** *(Skip this step for binary-only
+    targets)*. Do not leave the codebase in an altered state. Once you have a
+    final outcome (either `VERIFIED_SECURE` or you have exhausted your retries),
+    you must:
 
     -   If successful, generate a unified diff (e.g., `diff -u file.bak file`)
         representing your exact changes.

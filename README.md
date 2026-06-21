@@ -33,6 +33,12 @@ for:
 *   **Data & ML Pipelines**: Auditing training data ingress, model serialization
     formats (e.g., Pickle vulnerabilities), or boundary constraints between data
     science notebooks and production.
+*   **Compiled Binaries & Firmware (Gray-Box Auditing)**: Pointing the suite at
+    compiled release artifacts (using tools like `unblob`, `Ghidra`, `radare2`,
+    `qemu`, or `unicorn`) without providing source code. The intent of this mode
+    is to emulate a third-party security researcher, allowing you to see exactly
+    what vulnerabilities are discoverable by adversaries who only have access to
+    your released binaries.
 *   **Custom Test Environments**: Replacing the default container reproduction
     stage with isolated VMs, physical hardware testbeds (via USB/serial), or
     custom simulators.

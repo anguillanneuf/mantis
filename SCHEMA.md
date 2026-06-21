@@ -16,7 +16,8 @@ evolves sequentially as different skills process it.
 -   **`description`** (String): Detailed explanation of the flaw and its
     mechanism.
 -   **`code_paths`** (Array of Strings): Exact locations of the flaw (e.g.,
-    `["src/auth.c:145"]`).
+    `["src/auth.c:145"]`, binary memory addresses, function offsets, or specific
+    files within an extracted firmware blob).
 -   **`impact`** (String): The potential consequence of the vulnerability.
 -   **`severity`** (Enum): Initial severity estimate (`"CRITICAL"`, `"HIGH"`,
     `"MEDIUM"`, `"LOW"`, `"INFO"`).
@@ -55,7 +56,9 @@ evolves sequentially as different skills process it.
 -   **`patch_status`** (Enum): The outcome of the patching and re-attack
     attempts.
     -   Values: `"VERIFIED_SECURE"`, `"VERIFICATION_FAILED"`, `"ERROR"`
--   **`patch_diff`** (String): The unified diff of the verified fix.
+-   **`patch_diff`** (String): The unified diff of the verified fix, OR for
+    binary-only targets, a general recommendation on how this could be mitigated
+    in a production environment.
 -   **`reattack_status`** (Enum): The outcome of the variant-hunting re-attack
     attempt against the patch.
     -   Values: `"bypassed_patch"`, `"failed_to_bypass"`
