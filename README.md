@@ -65,9 +65,9 @@ deployment later in this guide.
 
 ## Architecture and Sequential Flow
 
-The pipeline is composed of ten distinct components (one supervisor and nine
-execution stages), maintaining state across a directory of finding files
-(`workspace/findings/*.json`). This entire process can be supervised
+The pipeline is composed of fifteen distinct components (one supervisor and
+fourteen execution stages), maintaining state across a directory of finding
+files (`workspace/findings/*.json`). This entire process can be supervised
 autonomously by the overarching **`/mantis_meta_agent`**.
 
 ```mermaid
@@ -525,7 +525,7 @@ configure your environment as follows:
         not grant delete permissions (`storage.objects.delete`).** Also consider
         other append-only storage mechanisms.
     *   **GCS Versioning:** Enable Object Versioning on the GCS bucket. This
-        provides a mechanism so that even if the AI or a untrusted crash
+        provides a mechanism so that even if the AI or an untrusted crash
         reproducer payload overwrites a file (like `learnings.jsonl`), previous
         states are preserved as non-current versions, preventing the AI from
         permanently deleting the history.

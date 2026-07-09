@@ -117,8 +117,8 @@ Written by `/mantis_plan`, read by `/mantis_researcher`.
 
 ## 3. Historical Learning State (`learnings.jsonl`)
 
-Appended by `/mantis_review`, `/mantis_reflect`, `/mantis_critic`, and
-`/mantis_patch`. Read and explicitly cleared by `/mantis_architecture`.
+Appended by `/mantis_reflect`, `/mantis_critic`, and `/mantis_patch`. Read and
+explicitly cleared by `/mantis_architecture`.
 
 Each line is a JSON object representing a finalized outcome or an insight from a
 trajectory.
