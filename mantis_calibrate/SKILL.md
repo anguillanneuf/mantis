@@ -97,6 +97,14 @@ Execute the calibration as follows:
                     paths), drastically reduce the multiplier to 0.2.
             -   If `workspace/kb/THREAT_MODEL.md` does not exist or does not
                 mention the components, default the Multiplier to 1.0.
+        -   If `production_viability` is **SAMPLE_OR_TEST**:
+            -   Set the Context Multiplier to a reduced value (e.g. `0.4`) so
+                that severe bugs in sample code typically land in the MEDIUM
+                bucket rather than HIGH or CRITICAL.
+            -   In the `executive_summary`, explicitly state that this is not a
+                production bug. The recommendation MUST focus on fixing the
+                example/test so that developers do not copy insecure patterns
+                into production code.
 
     **Final Score (Hazard) = (Impact + Likelihood) * Multiplier** (Capped at
     10.0).

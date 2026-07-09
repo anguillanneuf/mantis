@@ -32,7 +32,7 @@ Execute the chaining stage as follows:
 
     -   Read the JSON files in the `workspace/findings/` directory. Filter for
         findings that have passed validation (e.g., status is `"VALID"` or
-        viability is `"VIABLE"`).
+        viability is `"VIABLE"` or `"SAMPLE_OR_TEST"`).
     -   Read the Markdown Knowledge Base (`workspace/kb/entities/` and
         `workspace/kb/vulnerabilities/`) to identify architectural primitives
         that might not be bugs on their own, but could serve as stepping stones

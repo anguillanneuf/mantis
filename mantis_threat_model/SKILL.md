@@ -55,6 +55,10 @@ Execute the threat modeling process as follows:
 
     -   **System Overview Summary:** A concise summary derived from
         `architecture.md`.
+    -   **Deployment Intent:** Determine if the entire repository is intended
+        for production use, or if it is exclusively a tutorial, sample project,
+        or test suite. State this clearly (e.g., `Intent: SAMPLE_OR_TEST_ONLY`
+        or `Intent: PRODUCTION`).
     -   **Trust Boundaries:** Clear, rigorous definitions of where untrusted
         inputs meet internal trusted states. Reference the specific entities
         (e.g., `[Auth Module](entities/auth_module.md)`).

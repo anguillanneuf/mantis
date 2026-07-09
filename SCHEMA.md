@@ -39,7 +39,7 @@ evolves sequentially as different skills process it.
 
 -   **`production_viability`** (Enum): Whether the bug is triggerable in a
     release build.
-    -   Values: `"VIABLE"`, `"NON_VIABLE"`
+    -   Values: `"VIABLE"`, `"NON_VIABLE"`, `"SAMPLE_OR_TEST"`
 -   **`critic_reasoning`** (String): Rationale for viability (e.g., "Not
     protected by allocator padding").
 
@@ -127,8 +127,8 @@ trajectory.
     remove", "target_entity": "[e.g., auth_module.py]", "insight":
     "[description]", "source_stage": "[e.g., mantis_researcher]"}`
 -   Alternatively for findings: `{"title": "[finding_title]", "code_paths":
-    ["[path1:line1]"], "status": "[VIABLE / NON_VIABLE / FALSE_POSITIVE /
-    VERIFIED_SECURE / VERIFICATION_FAILED / ERROR]"}`
+    ["[path1:line1]"], "status": "[VIABLE / NON_VIABLE / SAMPLE_OR_TEST /
+    FALSE_POSITIVE / VERIFIED_SECURE / VERIFICATION_FAILED / ERROR]"}`
 
 This file serves as an ephemeral inbox/queue for new learnings. It is
 periodically synthesized into the permanent Markdown Knowledge Base

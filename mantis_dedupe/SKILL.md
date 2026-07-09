@@ -45,9 +45,10 @@ Execute your task as follows:
     `learnings.jsonl` entries (using `code_paths` and `title` similarities). If
     a current finding exactly matches a flaw that was already processed in this
     loop (regardless of whether its status was `FALSE_POSITIVE`, `NON_VIABLE`,
-    or `VERIFIED_SECURE`), you must **delete the new finding file entirely** and
-    drop it from your active list. This prevents the pipeline from getting stuck
-    re-evaluating the same issues in the current pass.
+    `SAMPLE_OR_TEST`, or `VERIFIED_SECURE`), you must **delete the new finding
+    file entirely** and drop it from your active list. This prevents the
+    pipeline from getting stuck re-evaluating the same issues in the current
+    pass.
 
 3.  **Filter Duplicate Findings in Current Batch:** Check the current findings
     against each other to find duplicates (using `code_paths` and `title`

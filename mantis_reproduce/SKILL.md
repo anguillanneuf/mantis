@@ -27,9 +27,9 @@ that reproduces a confirmed security flaw.
 Execute the reproduction stage under these constraints:
 
 1.  **Load Viable Findings:** Read the JSON files in the `workspace/findings/`
-    directory. Filter for findings where `production_viability` is `"VIABLE"`
-    (or skip the filter if you're not checking viability). If no applicable
-    findings exist, notify the user.
+    directory. Filter for findings where `production_viability` is `"VIABLE"` or
+    `"SAMPLE_OR_TEST"` (or skip the filter if you're not checking viability). If
+    no applicable findings exist, notify the user.
 
 2.  **Strict Host Isolation Constraint:**
 

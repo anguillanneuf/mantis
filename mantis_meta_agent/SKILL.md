@@ -93,8 +93,8 @@ Execute your orchestration duties in a continuous loop:
         `workspace/findings/` directory (e.g., move it to
         `workspace/archive/findings_pass_N/`) to clear the state for the next
         loop. *Crucially*, you must ensure that before archiving, any finalized
-        findings (especially `FALSE_POSITIVE`, `NON_VIABLE`, or
-        `VERIFIED_SECURE`) were successfully captured by the
+        findings (especially `FALSE_POSITIVE`, `NON_VIABLE`, `SAMPLE_OR_TEST`,
+        or `VERIFIED_SECURE`) were successfully captured by the
         `@mantis_architecture` subagent and written into the permanent Markdown
         Knowledge Base (`workspace/kb/`). If they are only archived but not in
         the KB, the Researcher will just re-find them in the next loop.
