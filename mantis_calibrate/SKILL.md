@@ -60,6 +60,10 @@ Execute the calibration as follows:
         -   2: Minor loss (e.g., minor information leak, localized disruption).
             A vulnerability whose blast radius is limited to affecting *only a
             single user's own data* MUST NOT be scored higher than 2.
+            *Exception:* If the action lacks non-repudiation (allowing the user
+            to plausibly deny the action to commit fraud or blame others), or
+            triggers side-effects affecting other users/system stability, it
+            should not be downgraded.
         -   1: Negligible impact on CIA, mostly a cosmetic issue. Findings of
             the type "the code is fragile", "lack of defense-in-depth", or
             purely theoretical hygiene issues MUST have an Impact score of 1,
@@ -107,6 +111,12 @@ Execute the calibration as follows:
                     multiplier high.
                 -   If it affects a low-value target (e.g., internal analytics,
                     sandboxed test data), reduce the multiplier (e.g., 0.5).
+                -   **Availability-Specific Context:** If the finding is
+                    availability-only (DoS), check the component's
+                    `availability_tier` in the Threat Model:
+                    -   `LOW_CRITICALITY`: Reduce multiplier to **0.5**.
+                    -   `STANDARD`: Reduce multiplier to **0.8**.
+                    -   `CRITICAL`: Keep multiplier at **1.0**.
                 -   If static/dynamic analysis proves the vulnerable code is
                     effectively "dead code" (never called in runtime execution
                     paths), drastically reduce the multiplier to 0.2.
@@ -143,10 +153,10 @@ Execute the calibration as follows:
     finding's priority to **LOW** (and cap its final score at **2.0**) if it
     meets any of the following "weak finding" criteria:
 
-    -   **Speculative Viability on Repro Failure:** The reproduction failed
-        (`repro_status: "failed_to_reproduce"`), and the reasoning for why it is
-        still viable in production is highly speculative, theoretical, or relies
-        on unverified assumptions about downstream systems.
+    -   **Reproduction Failure:** The reproduction failed (`repro_status:
+        "failed_to_reproduce"`). If the agent cannot successfully reproduce the
+        vulnerability, it MUST be force-downgraded regardless of any theoretical
+        arguments for production viability.
     -   **Minor Configuration Hygiene:** The issue represents a minor deviation
         from best-practice configuration (e.g., slightly loose permissions on an
         internal directory, lack of modern encryption on low-value internal
@@ -176,7 +186,8 @@ Execute the calibration as follows:
     -   **LOW (0.1 - 2.9):** Low priority. Minimal hazard. **Any finding of the
         type "the code is fragile", purely hygiene/defense-in-depth, or one that
         exclusively affects a single user's own data MUST be capped at LOW
-        priority regardless of the calculated score.**
+        priority regardless of the calculated score (unless the exception for
+        lack of non-repudiation or broader side-effects applies).**
 
 5.  **Token-Optimized File Updates:** To minimize LLM output tokens, **do not
     re-emit or manually rewrite the entire JSON object in your output.**
@@ -191,6 +202,7 @@ Execute the calibration as follows:
 
     -   `"impact_score"` (1-5)
     -   `"likelihood_score"` (1-5)
+    -   `"availability_tier"` (CRITICAL, STANDARD, LOW_CRITICALITY or null)
     -   `"mantis_risk_score"` (the final Hazard score)
     -   `"priority"` (CRITICAL, HIGH, MEDIUM, LOW)
     -   `"outrage_commentary"` (your reasoning about the outrage factor)

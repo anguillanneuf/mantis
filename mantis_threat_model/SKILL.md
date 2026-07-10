@@ -66,7 +66,12 @@ Execute the threat modeling process as follows:
         (e.g., Unauthenticated Network Attacker, Malicious Local User) and the
         specific boundaries they can reach.
     -   **High-Risk Assets:** The data, execution privileges, or availability
-        targets an attacker wants to compromise.
+        targets an attacker wants to compromise. **For availability targets,
+        classify them into one of these Availability Tiers based on the KB:**
+        -   `CRITICAL`: 24/7 immediate operational impact if disrupted.
+        -   `STANDARD`: Important operations; short downtime is tolerable.
+        -   `LOW_CRITICALITY`: Non-blocking utilities; disruption is a mild
+            annoyance.
 
 Save your final output directly to `workspace/kb/THREAT_MODEL.md`. When
 complete, notify the user.

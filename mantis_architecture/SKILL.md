@@ -54,11 +54,15 @@ Execute the architecture stage as follows:
         Markdown. Follow these strict paths:
 
         -   `workspace/kb/architecture.md`: High-level data flows, zone
-            definitions, and system design.
+            definitions, system design, and overall availability/uptime
+            requirements (if documented or inferable from configuration like
+            systemd, kubernetes, or load balancers).
         -   `workspace/kb/entities/[component_name].md`: Specific definitions
             for components (e.g., `auth_module.md`). Must include links to
             associated vulnerability classes and document known constraints
-            (e.g., "This module sanitizes input X"). Incorporate trajectory
+            (e.g., "This module sanitizes input X"). Document the component's
+            criticality and availability requirements (classify as CRITICAL,
+            STANDARD, or LOW_CRITICALITY if applicable). Incorporate trajectory
             insights here.
         -   `workspace/kb/vulnerabilities/[CWE-ID_or_BugClass].md`: Descriptions
             of bug classes (e.g., `CWE-79.md` or `Memory-Corruption.md`) that
