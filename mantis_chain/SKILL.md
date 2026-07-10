@@ -62,6 +62,16 @@ Execute the chaining stage as follows:
     -   Instead, generate a **net-new UUID** and create a new finding JSON file
         in `workspace/findings/<new_uuid>.json`.
     -   This "Super Finding" must clearly document the sequence of execution.
+    -   **Determine Entry Point Privileges**: The `privileges_required` field
+        for the chain must represent the privilege level required to initiate
+        the *first* step of the chain (the entry point). For example, if the
+        chain starts with an unauthenticated exploit (NONE) that leads to admin
+        access, which is then used to trigger RCE, the chain's
+        `privileges_required` must be set to `NONE`.
+    -   **Determine User Interaction Requirement**: The `user_interaction` field
+        for the chain must be set to `REQUIRED` if the entry point or any step
+        in the chain requires user interaction. It should only be set to `NONE`
+        if the entire chain is zero-click.
 
     ### Chain Findings Schema Format (Per File)
 
@@ -72,6 +82,8 @@ Execute the chaining stage as follows:
       "description": "Step-by-step documentation of the exploit chain. Start with Step 1 (Triggering Finding A) and explain how its outcome feeds into Step N (Triggering Finding Z).",
       "impact": "The combined, escalated impact of the chain (e.g., Remote Code Execution, Full Database Exfiltration). This should be higher than the individual findings.",
       "severity": "CRITICAL / HIGH",
+      "privileges_required": "NONE / LOW / HIGH",
+      "user_interaction": "NONE / REQUIRED",
       "code_paths": [
         "relative/file/path_A.c:line_number",
         "relative/file/path_B.c:line_number"

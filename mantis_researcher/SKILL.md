@@ -105,6 +105,8 @@ Execute the research stage as follows:
   "description": "Thorough root cause analysis detailing why the function is flawed under untrusted input.",
   "impact": "Exploit outcome (e.g., Privilege escalation, Memory corruption, Data exfiltration).",
   "severity": "CRITICAL / HIGH / MEDIUM / LOW / INFO",
+  "privileges_required": "NONE / LOW / HIGH",
+  "user_interaction": "NONE / REQUIRED",
   "code_paths": ["relative/file/path.c:line_number"],
   "mitigation": "Recommended corrective modification.",
   "history": [

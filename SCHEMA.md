@@ -21,6 +21,18 @@ evolves sequentially as different skills process it.
 -   **`impact`** (String): The potential consequence of the vulnerability.
 -   **`severity`** (Enum): Initial severity estimate (`"CRITICAL"`, `"HIGH"`,
     `"MEDIUM"`, `"LOW"`, `"INFO"`).
+-   **`privileges_required`** (Enum): Privilege level needed to exploit.
+    -   `"NONE"`: Unauthenticated / public access (e.g., pre-auth RCE, public
+        API bypass).
+    -   `"LOW"`: Standard authenticated user / basic privileges (e.g.,
+        user-scoped CSRF, auth-bypass to user role).
+    -   `"HIGH"`: Administrative / elevated privileges (e.g.,
+        admin-to-super-admin escalation, VM escape from root).
+-   **`user_interaction`** (Enum): Whether user interaction is required to
+    exploit.
+    -   `"NONE"`: Zero-click exploit (most severe).
+    -   `"REQUIRED"`: Requires social engineering, phishing, clicking a link, or
+        other user action.
 -   **`mitigation`** (String): Recommended corrective modification.
 -   **`history`** (Array of Objects): A chronological log of actions taken on
     this finding.

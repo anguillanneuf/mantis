@@ -76,6 +76,10 @@ Execute your task as follows:
             kept.
         -   **Severity:** Pick the highest severity level specified among the
             merged items.
+        -   **Privileges Required:** Inherit the most severe privilege
+            requirement (priority: `NONE` > `LOW` > `HIGH`).
+        -   **User Interaction:** Inherit the most severe user interaction
+            requirement (priority: `NONE` > `REQUIRED`).
         -   **Code Paths:** Collect and deduplicate all file paths and line
             numbers into a single unique array.
         -   **Description, Mitigation, & Impact:** Concatenate cleanly.

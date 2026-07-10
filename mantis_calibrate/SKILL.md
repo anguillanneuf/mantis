@@ -64,13 +64,21 @@ Execute the calibration as follows:
             the type "the code is fragile", "lack of defense-in-depth", or
             purely theoretical hygiene issues MUST have an Impact score of 1,
             ensuring they are rated LOW at most.
-        -   *Note on Internal Admin & Lateral Movement:* If a finding requires
-            pre-existing administrative privileges (internal privilege
-            escalation, e.g., admin to super-admin) or only allows lateral
-            movement/pivoting between internal components from an already
-            compromised state, cap its individual Impact score at 2. Its
-            escalated risk will be captured separately if it is successfully
-            chained into a "Super Finding" by the chainer.
+        -   *Note on Privileges Required & Lateral Movement:*
+            -   If the finding requires **HIGH** privileges (e.g.,
+                administrative privileges, admin-to-super-admin escalation) or
+                only allows lateral movement/pivoting between internal
+                components from an already compromised state, cap its individual
+                Impact score at **2**.
+            -   If the finding requires **LOW** privileges (e.g., standard
+                authenticated user), cap its individual Impact score at **3**
+                (unless it leads to systemic compromise of other tenants/users,
+                in which case it can be higher).
+            -   These caps apply to *individual* findings. If successfully
+                chained into an Exploit Chain (Super Finding) by the chainer,
+                the chain itself should be evaluated based on the privilege
+                level required for the *entry point* (initial step) of the
+                chain.
     -   **Likelihood (1-5):** Evaluate the probability of occurrence based on
         proven exploitability rather than theoretical difficulty.
         -   5: Actively exploited in the wild, OR the agent successfully
@@ -102,6 +110,14 @@ Execute the calibration as follows:
                 -   If static/dynamic analysis proves the vulnerable code is
                     effectively "dead code" (never called in runtime execution
                     paths), drastically reduce the multiplier to 0.2.
+            -   **User Interaction:**
+                -   If `user_interaction` is **REQUIRED** (e.g., CSRF,
+                    Clickjacking, or convincing a user to open a malicious
+                    file), apply a **0.7** multiplier to the Context Multiplier
+                    (e.g., if exposure is Internal (0.8) and user interaction is
+                    required, the combined multiplier is 0.8 * 0.7 = 0.56). This
+                    ensures these findings are capped below the CRITICAL
+                    threshold.
             -   If `workspace/kb/THREAT_MODEL.md` does not exist or does not
                 mention the components, default the Multiplier to 1.0.
         -   If `production_viability` is **SAMPLE_OR_TEST**:
@@ -150,8 +166,9 @@ Execute the calibration as follows:
     -   **CRITICAL (8.0 - 10.0):** Immediate action required. Very high hazard
         (e.g. high impact and likelihood). **Must NOT be used unless it
         represents a clear RCE (or equivalent total loss) by an unprivileged
-        attacker who is not already in an effective position to compromise the
-        system.**
+        attacker (where `privileges_required` is **NONE**) who is not already in
+        an effective position to compromise the system, AND `user_interaction`
+        is **NONE** (zero-click).**
     -   **HIGH (6.0 - 7.9):** High priority. Significant hazard, needs prompt
         resolution.
     -   **MEDIUM (3.0 - 5.9):** Standard priority. Moderate hazard, can be
