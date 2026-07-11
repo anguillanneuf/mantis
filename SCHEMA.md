@@ -58,7 +58,8 @@ evolves sequentially as different skills process it.
 ### Reproduction Fields (Written by `/mantis_reproduce`)
 
 -   **`repro_status`** (Enum): The outcome of the reproduction attempt.
-    -   Values: `"reproduced"`, `"failed_to_reproduce"`
+    -   Values: `"reproduced"`, `"statically_confirmed"`, `"not_attempted"`,
+        `"failed_to_reproduce"`
 -   **`repro_file_path`** (String): Path to the generated PoC script or payload.
 -   **`run_command`** (String): The exact command used to execute the PoC.
 -   **`repro_output`** (String): Standard output and error from the sandbox run.

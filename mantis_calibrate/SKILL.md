@@ -153,10 +153,22 @@ Execute the calibration as follows:
     finding's priority to **LOW** (and cap its final score at **2.0**) if it
     meets any of the following "weak finding" criteria:
 
-    -   **Reproduction Failure:** The reproduction failed (`repro_status:
-        "failed_to_reproduce"`). If the agent cannot successfully reproduce the
-        vulnerability, it MUST be force-downgraded regardless of any theoretical
-        arguments for production viability.
+    -   **Reproduction Failure or Not Attempted:** The reproduction failed
+        (`repro_status: "failed_to_reproduce"`) or was not attempted
+        (`repro_status: "not_attempted"`). If the agent did not successfully
+        reproduce the vulnerability, it MUST be force-downgraded to **LOW**
+        priority (and cap its final score at **2.0**) regardless of any
+        theoretical arguments for production viability.
+    -   **Static Confirmation:** The vulnerability was statically confirmed but
+        not empirically reproduced (`repro_status: "statically_confirmed"`). To
+        account for the lack of empirical proof:
+        -   Force-cap the `likelihood_score` at **3** (or keep it lower if
+            appropriate).
+        -   Apply an additional **0.8** multiplier to the final calculated score
+            (Hazard).
+        -   The finding **MUST NOT** be classified as **CRITICAL** priority (if
+            the score lands in the CRITICAL range, downgrade the priority to
+            **HIGH**).
     -   **Minor Configuration Hygiene:** The issue represents a minor deviation
         from best-practice configuration (e.g., slightly loose permissions on an
         internal directory, lack of modern encryption on low-value internal

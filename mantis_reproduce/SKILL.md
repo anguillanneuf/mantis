@@ -66,6 +66,20 @@ Execute the reproduction stage under these constraints:
         logical approaches. If any trajectory succeeds, immediately adopt its
         payload and discard the others to escape potential "give up" loops.
 
+    -   **Reproduction Status Classification:**
+
+        -   **`reproduced`**: The PoC successfully triggered the vulnerability.
+        -   **`failed_to_reproduce`**: The PoC was executed but did not trigger
+            the vulnerability.
+        -   **`statically_confirmed`**: Reproduction was impossible due to
+            environmental constraints (e.g., missing hardware emulators,
+            unavailable external services) but the flaw is statically obvious
+            (e.g., hardcoded credentials). This is strongly discouraged and
+            should only be used as a last resort.
+        -   **`not_attempted`**: The reproduction stage was skipped entirely
+            (e.g., due to infrastructure setup failure, timeouts, or explicit
+            skip configuration).
+
 4.  **Strict Public-API & Internal Invariant Constraints:**
 
     -   Your crash reproducer should interact with the codebase through
@@ -106,7 +120,8 @@ Execute the reproduction stage under these constraints:
 
     You must append the following to the existing object:
 
-    -   `"repro_status"` (`"reproduced"` or `"failed_to_reproduce"`).
+    -   `"repro_status"` (`"reproduced"`, `"statically_confirmed"`,
+        `"not_attempted"`, or `"failed_to_reproduce"`).
     -   `"repro_file_path"`
     -   `"run_command"`
     -   `"repro_output"`
