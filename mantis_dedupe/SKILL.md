@@ -32,6 +32,8 @@ Execute your task as follows:
     -   List the contents of the directory and read the files in
         `workspace/findings/`. If the directory is empty or does not exist,
         notify the user and exit.
+    -   *Important:* Ignore hidden files and directories (such as the `.trash/`
+        subdirectory) when listing or processing findings.
     -   Check if `learnings.jsonl` exists in the workspace. If it does, read its
         contents. This file represents findings and insights that have already
         been evaluated by downstream agents (like Reviewer or Patch) *within
@@ -44,11 +46,13 @@ Execute your task as follows:
 2.  **Filter Loop Duplicates:** Cross-reference the current findings against the
     `learnings.jsonl` entries (using `code_paths` and `title` similarities). If
     a current finding exactly matches a flaw that was already processed in this
-    loop (regardless of whether its status was `FALSE_POSITIVE`, `NON_VIABLE`,
-    `SAMPLE_OR_TEST`, or `VERIFIED_SECURE`), you must **delete the new finding
-    file entirely** and drop it from your active list. This prevents the
-    pipeline from getting stuck re-evaluating the same issues in the current
-    pass.
+    loop (regardless of its status in `learnings.jsonl`), you must **soft-delete
+    the new finding file** by ensuring the trash directory exists (e.g., `mkdir
+    -p workspace/findings/.trash/`), moving it to the trash staging directory
+    (`workspace/findings/.trash/`), logging the transaction in
+    `workspace/.tx_log.jsonl` (action: `"loop_filter"`), and dropping it from
+    your active list. This prevents the pipeline from getting stuck
+    re-evaluating the same issues.
 
 3.  **Filter Duplicate Findings in Current Batch:** Check the current findings
     against each other to find duplicates (using `code_paths` and `title`
@@ -90,8 +94,21 @@ Execute your task as follows:
     3.  **Execute the Script:** Run your script to update the primary finding's
         file (`workspace/findings/<primary_id>.json`) on disk.
 
-6.  **Clean Up:** Delete the redundant `.json` files of the duplicate findings
-    that were merged to clean up the directory and prevent redundant analysis in
-    downstream stages.
+6.  **Transactional Staged Clean Up:** Do not permanently delete redundant
+    files. Ensure the trash directory exists (e.g., `mkdir -p
+    workspace/findings/.trash/`). Move the merged duplicate `.json` files to the
+    trash staging directory (`workspace/findings/.trash/`). For every file
+    moved, append a transaction record to `workspace/.tx_log.jsonl`.
+
+    ### Transaction Log Schema Format (`workspace/.tx_log.jsonl`)
+
+    Each line must be a self-contained JSON object documenting the transaction:
+
+    ```json
+    {"timestamp": "2026-07-14T15:13:00Z", "action": "loop_filter | dedupe_merge", "primary_uuid": "[UUID] (or null for loop_filter)", "moved_uuid": "[UUID]"}
+    ```
+
+    This cleans up the directory for downstream stages while preserving rollback
+    capability.
 
 When complete, notify the user.

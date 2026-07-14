@@ -33,6 +33,13 @@ Execute the calibration as follows:
         the pipeline appends data to each finding file at each stage, these
         files provide the complete picture of each finding's journey (including
         its `id`, reproduction status, and production viability).
+    -   **Missing Fields Fallbacks:** If any finding is missing validation,
+        viability, or reproduction fields (such as chained findings), apply the
+        following fallback defaults before scoring:
+        -   If `status` is missing, treat it as `"PROVISIONALLY_VALID"`.
+        -   If `production_viability` is missing, treat it as
+            `"CONDITIONAL_VIABLE"`.
+        -   If `repro_status` is missing, treat it as `"not_attempted"`.
     -   Read `workspace/kb/THREAT_MODEL.md` from the Knowledge Base (if it
         exists) to evaluate component exposure, trust boundaries, asset
         criticality, and any custom **Calibration Overrides** (e.g., specific
@@ -108,10 +115,12 @@ Execute the calibration as follows:
             timing).
         -   1: Strictly theoretical risk with no known exploit path.
     -   **Context Multiplier (0.1 - 1.0):**
-        -   If `status` is **FALSE POSITIVE** or `production_viability` is
-            **NON_VIABLE**: Drop this finding completely. Do not score it or
-            update its file with calibration data.
-        -   If `production_viability` is **VIABLE**:
+        -   If `status` is **FALSE_POSITIVE** or **NEEDS_RESEARCH**, or if
+            `production_viability` is **NON_VIABLE**: Drop this finding
+            completely. Do not score it or update its file with calibration
+            data.
+        -   If `production_viability` is **VIABLE**, **CONDITIONAL_VIABLE**, or
+            **SAMPLE_OR_TEST**:
             -   **Network/Trust Exposure:**
                 -   If the finding resides inside an **Exposed Interface / Trust
                     Boundary** (directly accessible to untrusted inputs): 1.0.
@@ -223,13 +232,31 @@ Execute the calibration as follows:
                     ensures these findings are capped below the CRITICAL
                     threshold.
         -   If `production_viability` is **SAMPLE_OR_TEST**:
-            -   Set the Context Multiplier to a reduced value (e.g. `0.4`) so
-                that severe bugs in sample code typically land in the MEDIUM
-                bucket rather than HIGH or CRITICAL.
+            -   Apply a **0.4** scaling factor to the Context Multiplier (i.e.,
+                multiply the current Context Multiplier by **0.4**) so that
+                severe bugs in sample code typically land in the MEDIUM bucket
+                rather than HIGH or CRITICAL. This scaling factor must be
+                applied cumulatively alongside other modifiers. Do not override
+                the Context Multiplier directly to `0.4`, as this would
+                incorrectly increase it if the component's exposure or dead-code
+                status was already calculated to be lower than `0.4` (e.g.
+                `0.2`).
             -   In the `executive_summary`, explicitly state that this is not a
                 production bug. The recommendation MUST focus on fixing the
                 example/test so that developers do not copy insecure patterns
                 into production code.
+        -   If `production_viability` is **CONDITIONAL_VIABLE**:
+            -   Apply a **0.7** scaling factor to the Context Multiplier (i.e.,
+                multiply the current Context Multiplier by **0.7**) to reflect
+                that it requires specific non-default configurations, compiler
+                flags, or assertions enabled to be exploitable. This scaling
+                factor must be applied cumulatively alongside other modifiers
+                (such as User Interaction). Do not override the Context
+                Multiplier directly to `0.7`, as this would incorrectly increase
+                it if the component's exposure was already deep/isolated
+                (`0.5`).
+            -   In the `executive_summary`, document the specific conditions
+                required for viability.
 
     **Final Score (Hazard) = (Impact + Likelihood) * Multiplier** (Capped at
     10.0).
@@ -262,8 +289,9 @@ Execute the calibration as follows:
     *   **Force-Downgrade to LOW (Cap at 2.0 / LOW Priority):**
 
         -   **Reproduction Failure or Not Attempted:** The reproduction failed
-            (`repro_status: "failed_to_reproduce"`) or was not attempted
-            (`repro_status: "not_attempted"`). Regardless of theoretical
+            (`repro_status: "failed_to_reproduce"`), was not attempted
+            (`repro_status: "not_attempted"`), or the `repro_status` field was
+            missing (treated as `"not_attempted"`). Regardless of theoretical
             production viability.
         -   **Unreachable / Uncontrolled Inputs:** The finding relies on inputs
             that are documented as highly unlikely to be user-controlled, and no

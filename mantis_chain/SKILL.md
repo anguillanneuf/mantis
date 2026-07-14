@@ -72,6 +72,18 @@ Execute the chaining stage as follows:
         for the chain must be set to `REQUIRED` if the entry point or any step
         in the chain requires user interaction. It should only be set to `NONE`
         if the entire chain is zero-click.
+    -   **Determine Status**: Set `status` to `"VALID"`.
+    -   **Determine Production Viability**: Inherit from constituent findings.
+        If any constituent is `"SAMPLE_OR_TEST"`, set to `"SAMPLE_OR_TEST"`.
+        Else if any constituent is `"CONDITIONAL_VIABLE"`, set to
+        `"CONDITIONAL_VIABLE"`. Otherwise, set to `"VIABLE"`.
+    -   **Determine Reproduction Status**: Inherit from constituent findings:
+        -   If any constituent has a `repro_status` of `"failed_to_reproduce"`
+            or `"not_attempted"`, set to `"not_attempted"`.
+        -   Otherwise, if all constituents have a `repro_status` of
+            `"reproduced"`, set to `"reproduced"`.
+        -   Otherwise (some are `"statically_confirmed"` and others are
+            `"reproduced"`), set to `"statically_confirmed"`.
 
     ### Chain Findings Schema Format (Per File)
 
@@ -89,6 +101,9 @@ Execute the chaining stage as follows:
         "relative/file/path_B.c:line_number"
       ],
       "mitigation": "Recommended strategy to break the chain. Usually involves fixing at least one, if not all, of the underlying links.",
+      "status": "VALID",
+      "production_viability": "VIABLE / SAMPLE_OR_TEST / CONDITIONAL_VIABLE",
+      "repro_status": "reproduced / statically_confirmed / not_attempted",
       "history": [
         {
           "stage": "chainer",

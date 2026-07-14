@@ -35,7 +35,7 @@ Follow these guidelines during the consultation:
     *   **Custom Environment Integration**: Use Custom MCP servers for isolated
         testing (VMs) or hardware interaction.
 3.  **Ensure Schema Consistency**: Advise the user to strictly adhere to the
-    inter-stage data contracts defined in [SCHEMA.md](../SCHEMA.md) when
+    inter-stage data contracts defined in [schema.json](../schema.json) when
     building their harness.
 4.  **Adaptive Design**: Help them draft the code/architecture tailored to their
     specific stack, rather than imposing a rigid template.
@@ -60,11 +60,12 @@ Use the following guidelines as your technical reference when advising the user.
     (`workspace/findings/*.json`) or a database as the single source of truth.
     Skills should read from and write to this store. For horizontal scaling,
     recommend a centralized database.
-3.  **Deterministic Reporting:** Treat findings as internal state. Minimize use
-    the LLM to convert JSON findings into Markdown reports for human
+3.  **Deterministic Reporting:** Treat findings as internal state. Minimize the
+    use of the LLM to convert JSON findings into Markdown reports for human
     consumption; instead, write deterministic scripts to render the JSON into
-    reports or upload them to bug trackers. Only use an LLM for deterministic
-    subsets of this, such as by providing an executive summary if necessary.
+    reports or upload them to bug trackers. Only use an LLM for
+    non-deterministic subsets of this (like textual synthesis), such as by
+    providing an executive summary if necessary.
 4.  **Token Efficiency & Reusable Deterministic Tools:** Structure LLM outputs
     to return only the *minimum necessary information* (e.g., UUIDs, status
     codes). Do not force the LLM to write one-off scripts (e.g., Python or bash)
@@ -73,6 +74,15 @@ Use the following guidelines as your technical reference when advising the user.
     reusable, deterministic tools (such as pre-written helper scripts or MCP
     endpoints) that the LLM can simply invoke to perform text manipulation and
     state updates.
+5.  **State Store & Memory Rotation:** To prevent token bloat and infinite
+    loops, ephemeral queues (like `learnings.jsonl`) must be rotated. Upon
+    successful completion and verification of the Knowledge Base synthesis
+    stage, the orchestrator should ensure the archive directory exists (e.g.,
+    `mkdir -p workspace/archive/learnings/`) and **move** `learnings.jsonl` to a
+    numbered archive (e.g.,
+    `workspace/archive/learnings/learnings_pass_${N}_${X}.jsonl` where `${N}` is
+    the loop pass and `${X}` is a sub-index). If the synthesis fails, the active
+    queue must be left intact to prevent data loss.
 
 ### Architectural Overview
 
@@ -171,7 +181,10 @@ them back, use the following pattern:
         [Mantis Deduplicator](../mantis_dedupe/SKILL.md) (e.g., union of
         `code_paths`, taking highest severity, concatenating history).
     *   Updates `primary_uuid_1.json` on disk.
-    *   Deletes `duplicate_uuid_a.json` and `duplicate_uuid_b.json`.
+    *   Ensures the trash directory exists (e.g., `mkdir -p
+        workspace/findings/.trash/`).
+    *   Moves `duplicate_uuid_a.json` and `duplicate_uuid_b.json` to the trash
+        staging directory (`workspace/findings/.trash/`).
 
 #### C. Validation & Review Stages (Reviewer, Critic)
 

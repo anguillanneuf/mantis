@@ -65,9 +65,9 @@ deployment later in this guide.
 
 ## Architecture and Sequential Flow
 
-The pipeline is composed of fifteen distinct components (one supervisor and
-fourteen execution stages), maintaining state across a directory of finding
-files (`workspace/findings/*.json`). This entire process can be supervised
+The pipeline is composed of sixteen distinct components (one supervisor and
+fifteen execution stages), maintaining state across a directory of finding files
+(`workspace/findings/*.json`). This entire process can be supervised
 autonomously by the overarching **`/mantis_meta_agent`**.
 
 ```mermaid
@@ -89,6 +89,7 @@ graph TD
         Pat["/mantis_patch"]
         Cal["/mantis_calibrate"]
         Ref["/mantis_reflect"]
+        Rpt["/mantis_report"]
     end
 
     FileHist[("historical_learnings.jsonl")]
@@ -97,6 +98,7 @@ graph TD
     FilePlan[("plan.json")]
     FileFind[("workspace/findings/*.json")]
     FileLearn[("learnings.jsonl")]
+    FileRpt[/"workspace/report/review_packet.md"/]
 
     Meta --> Hist
     Hist --> Sum
@@ -113,7 +115,8 @@ graph TD
     Pat -.->|Re-attack Bypass Loop| Rep
     Pat --> Cal
     Cal --> Ref
-    Ref -.->|Next Loop Iteration| Arch
+    Ref --> Rpt
+    Rpt -.->|Next Loop Iteration| Arch
 
     Hist -.->|Generates| FileHist
     Hist -.->|Reads| FileSum
@@ -143,6 +146,9 @@ graph TD
     Ref -.->|Parses Trajectories & Appends| FileLearn
     Cri -.->|Appends| FileLearn
     Pat -.->|Appends| FileLearn
+
+    Rpt -.->|Reads| FileFind
+    Rpt -.->|Generates| FileRpt
 ```
 
 1.  **`/mantis_meta_agent` (Supervisor):** A persistent, overarching agent that
@@ -198,6 +204,9 @@ graph TD
     agents from the current round, extracting false assumptions, tool failures,
     and successes, and appends these structured insights to the
     `learnings.jsonl` inbox.
+16. **`/mantis_report` (Reporter):** Generates a human-readable security review
+    packet containing verified/reproduced findings, evidence, risk rationales,
+    and patch information at `workspace/report/review_packet.md`.
 
 --------------------------------------------------------------------------------
 
@@ -396,8 +405,8 @@ should use more durable and resilient databases instead of json files on a
 single machine.
 
 **Before building your harness, strictly adhere to the inter-stage data
-contracts defined in [SCHEMA.md](SCHEMA.md).** Of course, you can also modify
-the schema based on what works for you. There are few hard rules here.
+contracts defined in [schema.json](schema.json).** Of course, you can also
+modify the schema based on what works for you. There are few hard rules here.
 
 ### The Pipeline Adapter Skill (/mantis_pipeline_adapter)
 

@@ -1,0 +1,317 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mantis Pipeline State Contract",
+  "description": "Canonical schemas for all inter-stage state contracts in the Mantis pipeline.\n\n### Non-JSON Contracts:\n#### Threat Model (workspace/kb/THREAT_MODEL.md)\nWhile the threat model is a Markdown document, it serves as a contract. It must contain:\n- **System Overview Summary**: High-level design.\n- **Deployment Intent**: Must state 'Intent: PRODUCTION' or 'Intent: SAMPLE_OR_TEST_ONLY'.\n- **Trust Boundaries**: Zone definitions and entry points.\n- **Threat Actors & Vectors**: Attacker profiles.\n- **High-Risk Assets & Criticality**: Asset definitions. For DoS targets, must specify Availability Tier: 'CRITICAL' (24/7 immediate impact), 'STANDARD' (short disruptions tolerable), or 'LOW_CRITICALITY' (non-blocking).",
+  "type": "object",
+  "properties": {
+    "finding": {
+      "$ref": "#/$defs/finding"
+    },
+    "plan": {
+      "$ref": "#/$defs/plan"
+    },
+    "learning_entry": {
+      "$ref": "#/$defs/learning_entry"
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "title": "Finding Object Schema",
+      "description": "The finding object (workspace/findings/<uuid>.json) is the core state unit for a discovered vulnerability, evolving sequentially as different skills process it.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the filename (UUID)."
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise summary of the vulnerability. For exploit chains, must explicitly contain 'Exploit Chain' and list impact/constituent findings."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed explanation of the flaw and its mechanism."
+        },
+        "code_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exact locations of the flaw (e.g., 'src/auth.c:145'). For exploit chains, the union of all involved paths."
+        },
+        "impact": {
+          "type": "string",
+          "description": "The potential consequence of the vulnerability."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+          "description": "Initial severity estimate."
+        },
+        "privileges_required": {
+          "type": "string",
+          "enum": ["NONE", "LOW", "HIGH"],
+          "description": "Privilege level needed to exploit.\n- 'NONE': Unauthenticated / public access.\n- 'LOW': Standard authenticated user.\n- 'HIGH': Administrative / elevated privileges."
+        },
+        "attacker_position": {
+          "type": "string",
+          "enum": [
+            "EXTERNAL",
+            "INTERNAL_NETWORK",
+            "IN_CLUSTER",
+            "LOCAL",
+            "HOST_SYSTEM",
+            "SUPPLY_CHAIN",
+            "PHYSICAL_TEMPORARY",
+            "PHYSICAL_LONG_TERM"
+          ],
+          "description": "The starting position of the attacker required to exploit."
+        },
+        "user_interaction": {
+          "type": "string",
+          "enum": ["NONE", "REQUIRED"],
+          "description": "Whether user interaction is required."
+        },
+        "mitigation": {
+          "type": "string",
+          "description": "Recommended corrective modification."
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": { "type": "string" },
+              "action": { "type": "string" },
+              "details": { "type": "string" }
+            },
+            "required": ["stage", "action", "details"]
+          },
+          "description": "Chronological log of actions taken on this finding. For exploit chains, must include an entry detailing chained UUIDs."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["VALID", "FALSE_POSITIVE", "PROVISIONALLY_VALID", "NEEDS_RESEARCH", "DUPLICATE"],
+          "description": "The validity of the finding.\n- 'VALID': Confirmed vulnerability.\n- 'FALSE_POSITIVE': Not a bug or invalid.\n- 'PROVISIONALLY_VALID': Potential issue requiring dynamic validation.\n- 'NEEDS_RESEARCH': Inconclusive, requires deeper review.\n- 'DUPLICATE': The finding is a duplicate of another finding."
+        },
+        "reasoning": {
+          "type": "string",
+          "description": "The reviewer's independent rationale for the status."
+        },
+        "repro_hints": {
+          "type": "string",
+          "description": "Instructions for the reproducer agent on how to trigger the bug."
+        },
+        "production_viability": {
+          "type": "string",
+          "enum": ["VIABLE", "NON_VIABLE", "SAMPLE_OR_TEST", "CONDITIONAL_VIABLE"],
+          "description": "Whether the bug is triggerable in a release build.\n- 'VIABLE': Triggerable in production release build.\n- 'NON_VIABLE': Compiled out, blocked by environment, or debug-only.\n- 'SAMPLE_OR_TEST': Resides in test code/examples (non-production).\n- 'CONDITIONAL_VIABLE': Exploitable only under specific non-default configs or flags."
+        },
+        "critic_reasoning": {
+          "type": "string",
+          "description": "Rationale for viability (e.g., 'Not protected by allocator padding')."
+        },
+        "repro_status": {
+          "type": "string",
+          "enum": ["reproduced", "statically_confirmed", "not_attempted", "failed_to_reproduce"],
+          "description": "The outcome of the reproduction attempt."
+        },
+        "repro_file_path": {
+          "type": "string",
+          "description": "Path to the generated PoC script or payload."
+        },
+        "run_command": {
+          "type": "string",
+          "description": "The exact command used to execute the PoC."
+        },
+        "repro_output": {
+          "type": "string",
+          "description": "Standard output and error from the sandbox run."
+        },
+        "patch_status": {
+          "type": "string",
+          "enum": ["VERIFIED_SECURE", "VERIFICATION_FAILED", "ERROR"],
+          "description": "The outcome of the patching and re-attack attempts."
+        },
+        "patch_diff": {
+          "type": "string",
+          "description": "The unified diff of the verified fix, or mitigation recommendation."
+        },
+        "reattack_status": {
+          "type": "string",
+          "enum": ["bypassed_patch", "failed_to_bypass"],
+          "description": "The outcome of the variant-hunting re-attack."
+        },
+        "reattack_file_path": {
+          "type": "string",
+          "description": "Path to the newly generated re-attack script."
+        },
+        "reattack_run_command": {
+          "type": "string",
+          "description": "The exact execution command used for the re-attack."
+        },
+        "reattack_output": {
+          "type": "string",
+          "description": "Standard output and error from the re-attack run."
+        },
+        "impact_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Calculated technical impact (1-5) on CIA triad."
+        },
+        "likelihood_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Probability of occurrence (1-5) based on proven exploitability."
+        },
+        "availability_tier": {
+          "type": ["string", "null"],
+          "enum": ["CRITICAL", "STANDARD", "LOW_CRITICALITY", null],
+          "description": "Availability criticality of the component if availability impact exists."
+        },
+        "inferred_exposure": {
+          "type": "string",
+          "enum": ["EXPOSED", "INTERNAL", "PRIVILEGED"],
+          "description": "Resolved network/trust exposure tier based on threat model."
+        },
+        "mantis_risk_score": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10.0,
+          "description": "Final calculated risk score (Hazard = (Impact + Likelihood) * Multiplier)."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+          "description": "Qualitative priority bucket."
+        },
+        "sanity_triage_applied": {
+          "type": "string",
+          "description": "Semicolon-separated list of sanity triage caps and downgrades that fired."
+        },
+        "outrage_commentary": {
+          "type": "string",
+          "description": "Reasoning about the outrage factor (Risk = Hazard + Outrage)."
+        },
+        "executive_summary": {
+          "type": "string",
+          "description": "High-level summary of the risk for stakeholders."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "code_paths",
+        "impact",
+        "severity",
+        "mitigation",
+        "history"
+      ]
+    },
+    "plan": {
+      "type": "object",
+      "title": "Planning State Schema",
+      "description": "Schema for plan.json, written by /mantis_plan and read by /mantis_researcher.",
+      "properties": {
+        "investigations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Title of the investigation (e.g., 'Exhaustive Review: src/api')."
+              },
+              "target_files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Exact file paths to audit."
+              },
+              "kb_references": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Paths to Markdown KB files providing context (e.g., 'workspace/kb/entities/auth.md')."
+              },
+              "question": {
+                "type": "string",
+                "description": "Detailed prompting instructions for the researcher."
+              }
+            },
+            "required": ["title", "target_files", "kb_references", "question"]
+          }
+        }
+      },
+      "required": ["investigations"]
+    },
+    "learning_entry": {
+      "type": "object",
+      "title": "Learning Entry Schema",
+      "description": "Schema for a single JSON line in learnings.jsonl (ephemeral inbox) or historical_learnings.jsonl. Can represent either a trajectory insight or a finalized finding outcome.",
+      "oneOf": [
+        {
+          "title": "Trajectory Insight",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["trajectory_insight"]
+            },
+            "action": {
+              "type": "string",
+              "enum": ["add", "update", "remove"]
+            },
+            "target_entity": {
+              "type": "string",
+              "description": "Target component or file (e.g., 'auth_module.py')."
+            },
+            "insight": {
+              "type": "string",
+              "description": "Description of the insight."
+            },
+            "source_stage": {
+              "type": "string",
+              "description": "Stage that produced the insight."
+            }
+          },
+          "required": ["type", "action", "target_entity", "insight", "source_stage"]
+        },
+        {
+          "title": "Finding Outcome Summary",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Finding title."
+            },
+            "code_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "VIABLE",
+                "NON_VIABLE",
+                "SAMPLE_OR_TEST",
+                "CONDITIONAL_VIABLE",
+                "FALSE_POSITIVE",
+                "NEEDS_RESEARCH",
+                "VERIFIED_SECURE",
+                "VERIFICATION_FAILED",
+                "ERROR"
+              ]
+            }
+          },
+          "required": ["title", "code_paths", "status"]
+        }
+      ]
+    }
+  }
+}

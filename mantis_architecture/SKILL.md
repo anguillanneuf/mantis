@@ -90,12 +90,31 @@ Execute the architecture stage as follows:
         insights, actively correct it to prevent the "wrong learning" from
         persisting and blinding future agents.
 
-5.  **Clear the Inbox (State Management):**
+5.  **Transactional Inbox Clearing & Archiving:**
 
-    -   To prevent infinite loops and token bloat in future rounds, you must
-        clear the queue. After all insights from `learnings.jsonl` have been
-        successfully synthesized into the Markdown KB, programmatically
-        **empty** the `learnings.jsonl` file. The KB is now the single source of
-        truth.
+    -   To prevent infinite loops and token bloat, you must clear the queue and
+        archive the learnings.
+    -   **Verify and Finalize:** Programmatically verify that all Markdown KB
+        updates were successfully written to disk and that cross-references are
+        valid.
+    -   **Commit by Moving:** Only after verifying synthesis success, move
+        `learnings.jsonl` to the archive directory:
+        -   Ensure the target directory exists (e.g., `mkdir -p
+            workspace/archive/learnings/`).
+        -   Determine the loop pass number `N` (from the `MANTIS_PASS_NUMBER`
+            env var, or fallback by scanning for directories matching either
+            `workspace/archive/findings_pass_N` or
+            `workspace/archive/loopN_findings` on disk, extracting the loop pass
+            integer `N` from each (e.g. by capturing the digits inside
+            `findings_pass_N` or `loopN_findings` using regex, rather than
+            assuming the digits appear only as a suffix at the end of the folder
+            name), finding the maximum number, and adding 1).
+        -   Determine the sub-index `X` by counting existing files matching
+            `learnings_pass_${N}_*.jsonl` in `workspace/archive/learnings/` and
+            adding 1.
+        -   Move the file: `mv learnings.jsonl
+            workspace/archive/learnings/learnings_pass_${N}_${X}.jsonl`.
+    -   If synthesis fails or is interrupted, leave `learnings.jsonl` intact in
+        its original location to ensure no data is lost.
 
 When complete, notify the user.

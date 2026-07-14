@@ -30,9 +30,10 @@ viability.**
 Execute the critic evaluation as follows:
 
 1.  **Load Findings:** Read the JSON files in the `workspace/findings/`
-    directory. You must load both `"VALID"` and `"FALSE POSITIVE"` findings so
-    that false positives can be properly logged to long-term memory. If none
-    exist, notify the user.
+    directory. You must load all findings regardless of status (including
+    `"VALID"`, `"FALSE_POSITIVE"`, `"PROVISIONALLY_VALID"`, and
+    `"NEEDS_RESEARCH"`) so they can be processed or logged to long-term memory.
+    If none exist, notify the user.
 
 2.  **Evaluate Global Repository Intent:** Read `workspace/kb/THREAT_MODEL.md`
     (if it exists). Check the **Deployment Intent** section. If the threat model
@@ -42,11 +43,12 @@ Execute the critic evaluation as follows:
     the file structure, and skip the remaining per-finding viability checks.
 
 3.  **Acquire Targeted Code Snippets:** For each finding where `status` is
-    `"VALID"`, read the target file. Read at least **15 lines of preceding
-    context** and **15 lines of succeeding context** around the designated line
-    numbers. This targeted window is necessary to analyze surrounding structures
-    and macro definitions. (Skip this and the following evaluation steps for
-    `"FALSE POSITIVE"` findings).
+    `"VALID"` or `"PROVISIONALLY_VALID"`, read the target file. Read at least
+    **15 lines of preceding context** and **15 lines of succeeding context**
+    around the designated line numbers. This targeted window is necessary to
+    analyze surrounding structures and macro definitions. (Skip this and the
+    following evaluation steps for `"FALSE_POSITIVE"` or `"NEEDS_RESEARCH"`
+    findings).
 
 4.  **Evaluate Domain-Specific Viability Constraints:**
 
@@ -59,30 +61,28 @@ Execute the critic evaluation as follows:
         deployments. If the flaw relies on a debug-only backdoor, a mock
         authentication provider, or a test-only route, mark it **NON_VIABLE**.
 
-5.  **Check Critical Non-Viable Criteria:** Mark a finding as **NON_VIABLE** if
-    it meets any of the following criteria to ensure we do not waste patching
-    resources on unreachable or compiled-out code:
+5.  **Determine Viability Status:** Assign one of the following viability
+    statuses to the finding to ensure we prioritize correctly:
 
-    -   **Disabled Assertions (Memory Flaws):** Bugs that rely on standard
-        `assert()`, `debug_abort()`, or development-only panics to trigger
-        crash/Denial of Service (DoS) states are NON_VIABLE. In
-        production/release compilation, `-DNDEBUG` strips these macros. Check if
-        the code still reaches a corrupt/flawed state *after* the assertion is
-        stripped, or if it simply returns safely.
-    -   **Debug-Only Features:** Security flaws that exist inside files or
-        sections conditionally compiled with debug flags (e.g. `#ifdef DEBUG`)
-        are NON_VIABLE.
-    -   **Blocked by Environmental Controls:** If the exploit path is blocked by
-        standard, non-configurable production environmental controls (e.g.,
-        OS-level permissions, kernel-level sandboxing, read-only filesystems, or
-        hardware-enforced write protections) that cannot be bypassed, mark it
-        NON_VIABLE.
-    -   **Harnesses, Mocks, & Examples:** Issues residing in example code, test
-        suites, fuzzing harnesses, or validation frameworks are technically not
-        deployed to production. However, because developers often copy sample
-        code, these should NOT be marked NON_VIABLE. Instead, mark them as
-        **SAMPLE_OR_TEST** so the pipeline can properly adjust their risk
-        severity.
+    -   **`NON_VIABLE`**: The flaw is unreachable or compiled-out in production.
+        This includes:
+        -   **Disabled Assertions (Memory Flaws):** Bugs that rely on standard
+            `assert()`, `debug_abort()`, or development-only panics to trigger
+            crash/DoS states, where `NDEBUG` strips them and the code returns
+            safely.
+        -   **Debug-Only Features:** Conditionally compiled with debug flags
+            (e.g. `#ifdef DEBUG`).
+        -   **Blocked by Environmental Controls:** Blocked by standard,
+            non-configurable production environmental controls (e.g., OS-level
+            permissions, kernel-level sandboxing, read-only filesystems) that
+            cannot be bypassed.
+    -   **`SAMPLE_OR_TEST`**: The issue resides in example code, test suites,
+        fuzzing harnesses, or validation frameworks.
+    -   **`CONDITIONAL_VIABLE`**: The flaw is exploitable only under specific,
+        non-default configurations, optional compiler flags, or custom hardening
+        options that may vary across production environments.
+    -   **`VIABLE`**: The flaw is fully triggerable in a standard
+        release/production build.
 
 6.  **Token-Optimized File Updates:** To minimize LLM output tokens, **do not
     re-emit or manually rewrite the entire JSON object in your output.**
@@ -92,8 +92,8 @@ Execute the critic evaluation as follows:
 
     You must append the following to the existing object:
 
-    -   A `"production_viability"` field (`"VIABLE"`, `"NON_VIABLE"`, or
-        `"SAMPLE_OR_TEST"`).
+    -   A `"production_viability"` field (`"VIABLE"`, `"NON_VIABLE"`,
+        `"SAMPLE_OR_TEST"`, or `"CONDITIONAL_VIABLE"`).
     -   A `"critic_reasoning"` field explaining your evaluation.
     -   An entry to the `"history"` array:
 
@@ -101,18 +101,19 @@ Execute the critic evaluation as follows:
     {
       "stage": "critic",
       "action": "evaluated",
-      "details": "Determined production viability as [VIABLE/NON_VIABLE/SAMPLE_OR_TEST] because [reason]"
+      "details": "Determined production viability as [VIABLE/NON_VIABLE/SAMPLE_OR_TEST/CONDITIONAL_VIABLE] because [reason]"
     }
     ```
 
 7.  **Append to Long-Term Memory:** For each finding you loaded (including
-    `NON_VIABLE`, `SAMPLE_OR_TEST`, and `FALSE POSITIVE`s), append a single
-    structured JSON line to a workspace database file named `learnings.jsonl`
-    (using append mode). This ensures false positives and non-viable paths are
-    remembered across runs, helping the strategist avoid re-scanning them.
+    `NON_VIABLE`, `SAMPLE_OR_TEST`, `CONDITIONAL_VIABLE`, `FALSE_POSITIVE`, and
+    `NEEDS_RESEARCH`), append a single structured JSON line to a workspace
+    database file named `learnings.jsonl` (using append mode). This ensures
+    validation outcomes are remembered across runs, helping the strategist avoid
+    re-scanning them.
 
     -   **Memory Entry Format:** `{"title": "[finding_title]", "code_paths":
         ["[path1:line1]"], "status": "[NON_VIABLE / SAMPLE_OR_TEST /
-        FALSE_POSITIVE / VIABLE]"}`
+        FALSE_POSITIVE / VIABLE / CONDITIONAL_VIABLE / NEEDS_RESEARCH]"}`
 
 When complete, notify the user.

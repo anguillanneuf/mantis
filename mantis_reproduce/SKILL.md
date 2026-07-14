@@ -27,9 +27,9 @@ that reproduces a confirmed security flaw.
 Execute the reproduction stage under these constraints:
 
 1.  **Load Viable Findings:** Read the JSON files in the `workspace/findings/`
-    directory. Filter for findings where `production_viability` is `"VIABLE"` or
-    `"SAMPLE_OR_TEST"` (or skip the filter if you're not checking viability). If
-    no applicable findings exist, notify the user.
+    directory. Filter for findings where `production_viability` is `"VIABLE"`,
+    `"SAMPLE_OR_TEST"`, or `"CONDITIONAL_VIABLE"` (or skip the filter if you're
+    not checking viability). If no applicable findings exist, notify the user.
 
 2.  **Strict Host Isolation Constraint:**
 
@@ -117,6 +117,17 @@ Execute the reproduction stage under these constraints:
     Instead, use in-place editing tools (like a short script in your preferred
     language, or `jq`) to programmatically append the new fields to the existing
     `workspace/findings/<id>.json` file.
+
+    Additionally, you must **Update the Reproduction Attempt Cache** to help the
+    planner track attempts efficiently:
+
+    -   Maintain a JSON cache file at `workspace/archive/.repro_attempts.json`.
+    -   Run a short python script (or use `jq`) to load this file (creating it
+        as `{}` if missing).
+    -   Generate a key by normalizing the current finding's `"title"` (e.g.,
+        lowercase, strip all non-alphanumeric characters and whitespace).
+    -   Increment the integer value for this key by 1.
+    -   Save the updated cache back to `workspace/archive/.repro_attempts.json`.
 
     You must append the following to the existing object:
 

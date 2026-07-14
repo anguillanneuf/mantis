@@ -75,6 +75,31 @@ Execute the planning stage as follows:
         You may generate the `plan.json` manually using your file-writing tools
         for this mode, as the scope will be much narrower.
 
+        -   **Targeted Re-Evaluation**: Review the KB index, entity files, and
+            the reproduction attempt cache file
+            (`workspace/archive/.repro_attempts.json` if it exists). You must
+            schedule targeted investigations in `plan.json` for:
+
+            1.  Findings marked `"NEEDS_RESEARCH"` (to gather missing context
+                and resolve them to `"VALID"` or `"FALSE_POSITIVE"`).
+            2.  Findings marked `"PROVISIONALLY_VALID"` where the reproduction
+                status (`repro_status`) is `"not_attempted"`, or findings where
+                reproduction previously failed (`"failed_to_reproduce"`) but
+                have had **fewer than 2 total reproduction attempts**.
+                -   To check the attempt count efficiently: Normalize the
+                    finding's `"title"` (lowercase, strip non-alphanumeric and
+                    whitespace) to generate a key, and look up its integer
+                    attempt value in the
+                    `workspace/archive/.repro_attempts.json` cache (treating it
+                    as 0 if the file is missing or the key is not found).
+                -   This retry mechanism provides resilience against transient
+                    environment issues or suboptimal initial prompts. Do **not**
+                    reschedule findings that are already resolved (`"VALID"`,
+                    `"FALSE_POSITIVE"`, `"VERIFIED_SECURE"`), or those that have
+                    reached the 2-attempt limit in the cache, unless the target
+                    file has been modified in the current loop (VCS diff shows
+                    changes).
+
         -   **Context Injection (`kb_references`):** For each investigation you
             plan, you must determine which files in the `workspace/kb/`
             directory (e.g., `workspace/kb/entities/auth_module.md` or
@@ -82,6 +107,7 @@ Execute the planning stage as follows:
             for the researcher. Include the exact file paths to these markdown
             files in the `"kb_references"` array for that investigation. This
             shifts the burden of context-gathering off the researcher.
+
         -   **Exploratory/Unconstrained Investigations (Low Probability):** With
             a low probability (e.g., a 15-20% chance per planning pass), include
             an exploratory investigation in the plan. Select a component or

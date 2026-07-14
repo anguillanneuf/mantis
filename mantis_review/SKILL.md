@@ -103,11 +103,22 @@ Execute your validation as follows:
         finding as a FALSE_POSITIVE to prevent downstream agents from wasting
         resources on hallucinated bugs.
 
+    -   **Status Resolution:**
+        -   Mark as **FALSE_POSITIVE** if it violates any of the 12 rules above.
+        -   Mark as **VALID** if it passes all rules and has a clear,
+            triggerable flaw.
+        -   Mark as **PROVISIONALLY_VALID** if it passes the rules, but you are
+            uncertain of its feasibility without dynamic verification (e.g.
+            requires complex heap grooming or precise timing).
+        -   Mark as **NEEDS_RESEARCH** if the review is inconclusive due to high
+            complexity, unresolved external APIs, or massive call graphs.
+
 4.  **Construct Reproduction Script Hints:** For every finding marked as
-    **VALID**, provide high-signal `"repro_hints"` explaining how a reproducer
-    agent can trigger the bug, what inputs or payload parameters are required,
-    and what crash condition, ASan output, or functional validation result
-    (e.g., an unexpected HTTP 200 OK) is expected to confirm the security flaw.
+    **VALID** or **PROVISIONALLY_VALID**, provide high-signal `"repro_hints"`
+    explaining how a reproducer agent can trigger the bug, what inputs or
+    payload parameters are required, and what crash condition, ASan output, or
+    functional validation result (e.g., an unexpected HTTP 200 OK) is expected
+    to confirm the security flaw.
 
 5.  **Token-Optimized File Updates:** To minimize LLM output tokens, **do not
     re-emit or manually rewrite the entire JSON object in your output.**
@@ -119,16 +130,18 @@ Execute your validation as follows:
 
     You must append the following to the existing object:
 
-    -   A `"status"` field (either `"VALID"` or `"FALSE_POSITIVE"`).
+    -   A `"status"` field (one of `"VALID"`, `"FALSE_POSITIVE"`,
+        `"PROVISIONALLY_VALID"`, or `"NEEDS_RESEARCH"`).
     -   A `"reasoning"` field.
-    -   A `"repro_hints"` field.
+    -   A `"repro_hints"` field (optional for `"NEEDS_RESEARCH"` or
+        `"FALSE_POSITIVE"`).
     -   An entry to the `"history"` array:
 
     ```json
     {
       "stage": "reviewer",
       "action": "reviewed",
-      "details": "Determined status as [VALID/FALSE_POSITIVE] because [reason]"
+      "details": "Determined status as [VALID/FALSE_POSITIVE/PROVISIONALLY_VALID/NEEDS_RESEARCH] because [reason]"
     }
     ```
 

@@ -42,9 +42,13 @@ to specialized subagents to maintain context efficiency and isolate tasks.
 Execute your orchestration duties in a continuous loop:
 
 1.  **Sub-Agent Orchestration Loop:** For each iteration of the review loop,
-    delegate the workload sequentially to the specialized subagents. Call each
-    subagent as a tool (or using the `@agent_name` syntax if instructed by your
-    prompt) with a concise instruction to perform its designated task:
+    maintain a loop pass counter `N` (starting at 1 for the first pass, and
+    incrementing by 1 for each subsequent pass). Export this counter as an
+    environment variable `MANTIS_PASS_NUMBER` so that all subagents have access
+    to the current loop context. Delegate the workload sequentially to the
+    specialized subagents. Call each subagent as a tool (or using the
+    `@agent_name` syntax if instructed by your prompt) with a concise
+    instruction to perform its designated task:
 
     -   **Stage 0 (Optional Pre-processing History):** Call the
         `@mantis_history` subagent to analyze repository's version control
@@ -89,15 +93,37 @@ Execute your orchestration duties in a continuous loop:
     -   **Stage 13 (Reflect):** Call the `@mantis_reflect` subagent to parse the
         execution trajectories of the round and append false assumptions or tool
         failures to the `learnings.jsonl` inbox.
-    -   **Stage 14 (Archive & KB Verification):** Archive the
-        `workspace/findings/` directory (e.g., move it to
-        `workspace/archive/findings_pass_N/`) to clear the state for the next
-        loop. *Crucially*, you must ensure that before archiving, any finalized
-        findings (especially `FALSE_POSITIVE`, `NON_VIABLE`, `SAMPLE_OR_TEST`,
-        or `VERIFIED_SECURE`) were successfully captured by the
-        `@mantis_architecture` subagent and written into the permanent Markdown
-        Knowledge Base (`workspace/kb/`). If they are only archived but not in
-        the KB, the Researcher will just re-find them in the next loop.
+    -   **Stage 14 (Report):** Call the `@mantis_report` subagent to generate
+        the human-readable review packet (`workspace/report/review_packet.md`)
+        containing only reproduced findings, evidence, and patches.
+    -   **Stage 15 (Archive & KB Verification):**
+        1.  **Call the `@mantis_architecture` subagent** to perform a final
+            synthesis of the current round's findings (especially
+            `"FALSE_POSITIVE"`, `"NON_VIABLE"`, `"SAMPLE_OR_TEST"`, and
+            `"VERIFIED_SECURE"`) into the permanent Markdown Knowledge Base
+            (`workspace/kb/`).
+        2.  Verify that the KB updates were successfully written and that
+            `learnings.jsonl` was processed.
+        3.  **Archive** the `workspace/findings/` directory: If
+            `workspace/findings/` exists and contains findings, ensure the
+            target archive directory exists (e.g., run `mkdir -p
+            workspace/archive/findings_pass_N/` where `N` is calculated below).
+            Determine the current pass number `N` dynamically if not provided in
+            the environment by scanning for directories matching either
+            `workspace/archive/findings_pass_N` or
+            `workspace/archive/loopN_findings` on disk, extracting the loop pass
+            integer `N` from each (e.g. by capturing the digits inside
+            `findings_pass_N` or `loopN_findings` using regex, rather than
+            assuming the digits appear only as a suffix at the end of the folder
+            name), finding the maximum number, and adding 1 (starting at 1 if
+            none exist). Move all `.json` files and the `.trash/` directory if
+            it exists to the target archive directory (e.g., `mv
+            workspace/findings/*.json workspace/archive/findings_pass_N/` and
+            `mv workspace/findings/.trash/ workspace/archive/findings_pass_N/`).
+            This clears the active state while preserving the empty
+            `workspace/findings/` directory for subsequent loop runs. If the
+            findings directory is empty or does not exist, ensure it exists and
+            skip archiving.
 
 2.  **Intelligent Supervision & Error Handling:**
 
@@ -136,8 +162,8 @@ Execute your orchestration duties in a continuous loop:
         specific findings if the user requests more detail without interrupting
         the main loop logic.
 
-5.  **Resilience & Persistence:** When Stage 11 completes and you have output
-    your summary, immediately begin the next pass. Chain your tool calls
+5.  **Resilience & Persistence:** When Stage 15 (Archive & KB Verification)
+    completes, immediately begin the next pass. Chain your tool calls
     automatically. However, if you encounter a permanent, non-recoverable error
     (e.g., a persistent environment failure or fundamentally broken pipeline
     state), halt the loop and yield to the user. Try your best to recover from
