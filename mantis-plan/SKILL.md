@@ -2,7 +2,7 @@
 name: mantis-plan
 description: >-
   Formulates a targeted defensive security reviewing plan based on the active threat model and historical learnings.
-  Use when starting a security review campaign to map the codebase boundaries and generate a roadmap (plan.json).
+  Use when starting a security review campaign to map the codebase boundaries and generate a roadmap (workspace/plan.json).
   Don't use for executing code reviews, writing test scripts, or patching code.
 ---
 
@@ -18,6 +18,26 @@ records to map the external boundary and formulate an adaptive review roadmap.
 -   **Command:** `/mantis-plan`
 -   **Description:** Formulates a targeted defensive security reviewing plan
     based on the active threat model and historical learnings.
+
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   `workspace/kb/THREAT_MODEL.md` (if exists).
+    -   `workspace/kb/index.md` (checks existence to determine Mode A vs B).
+    -   Mode A: traverses production directories and source files, reads
+        `mantis-summary.md` (if available).
+    -   Mode B: reads `workspace/kb/index.md`, `workspace/kb/THREAT_MODEL.md`,
+        `workspace/archive/.repro_attempts.json` (if exists), VCS diffs or file
+        timestamps/hashes.
+-   **Writes**:
+    -   `workspace/plan.json`.
+-   **Preconditions**:
+    -   Codebase must be accessible.
+-   **Idempotency Guarantee**:
+    -   Overwrites `workspace/plan.json` directly. In Mode B, consults
+        `.repro_attempts.json` and skips rescheduling already processed findings
+        unless the target files have been modified in the current loop.
 
 ## Instructions
 
@@ -48,9 +68,9 @@ Execute the planning stage as follows:
     -   **MODE A: First-Pass Exhaustive Mode (No `workspace/kb/index.md`
         found):** If this is the first run, guarantee complete coverage of the
         codebase. To avoid hitting output token limits on large repositories, do
-        not generate the `plan.json` manually in your text response. Instead,
-        execute a shell command to run a short script in your preferred language
-        that:
+        not generate the `workspace/plan.json` manually in your text response.
+        Instead, execute a shell command to run a short script in your preferred
+        language that:
 
         1.  Uses `find` or `os.walk` to crawl all production directories. If a
             `mantis-summary.md` file exists in a directory, use its contents to
@@ -59,11 +79,11 @@ Execute the planning stage as follows:
             files (e.g., `.c`, `.cpp`, `.py`, `.js`, `.go`, `.rs`, `.java`).
         2.  Ignores test folders, build artifacts, and vendor dependencies
             (e.g., `node_modules`, `.git`, `tests/`).
-        3.  Programmatically formats the list into the `plan.json` schema and
-            writes it directly to disk. Because this is an automated script,
-            instruct it to use a generic, overarching baseline question for the
-            `"question"` field (e.g., "Conduct a baseline audit for memory
-            safety and logic flaws"), reserving highly contextual custom
+        3.  Programmatically formats the list into the `workspace/plan.json`
+            schema and writes it directly to disk. Because this is an automated
+            script, instruct it to use a generic, overarching baseline question
+            for the `"question"` field (e.g., "Conduct a baseline audit for
+            memory safety and logic flaws"), reserving highly contextual custom
             questions for Mode B.
 
     -   **MODE B: Strategic Learning Mode (`workspace/kb/index.md` exists):**
@@ -72,13 +92,13 @@ Execute the planning stage as follows:
         trust boundaries, vulnerability classes, and architectural components.
         Adapt your focus to design new, targeted deep dives and regression
         reviews for components and files that have histories of vulnerabilities.
-        You may generate the `plan.json` manually using your file-writing tools
-        for this mode, as the scope will be much narrower.
+        You may generate the `workspace/plan.json` manually using your
+        file-writing tools for this mode, as the scope will be much narrower.
 
         -   **Targeted Re-Evaluation**: Review the KB index, entity files, and
             the reproduction attempt cache file
             (`workspace/archive/.repro_attempts.json` if it exists). You must
-            schedule targeted investigations in `plan.json` for:
+            schedule targeted investigations in `workspace/plan.json` for:
 
             1.  Findings marked `"NEEDS_RESEARCH"` (to gather missing context
                 and resolve them to `"VALID"` or `"FALSE_POSITIVE"`).
@@ -131,9 +151,9 @@ Execute the planning stage as follows:
             tools (Mode B), write the plan directly to disk and do not print the
             JSON contents in your chat response.
 
-3.  **Schema Enforcement:** Regardless of the mode, the final `plan.json` file
-    written to disk should match the following schema to ensure downstream
-    auditing agents can parse it correctly:
+3.  **Schema Enforcement:** Regardless of the mode, the final
+    `workspace/plan.json` file written to disk should match the following schema
+    to ensure downstream auditing agents can parse it correctly:
 
 ### Plan Schema Format
 
@@ -150,5 +170,5 @@ Execute the planning stage as follows:
 }
 ```
 
-Ensure `plan.json` is successfully written. When you have finished, notify the
-user.
+Ensure `workspace/plan.json` is successfully written. When you have finished,
+notify the user.

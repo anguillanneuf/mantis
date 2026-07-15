@@ -21,6 +21,24 @@ and research stages.
     summaries (`mantis-summary.md`) for each directory to make planning and
     research more efficient.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   Codebase directories and source files (excluding `node_modules`,
+        `vendor`, `.git`, build outputs, and `tests/`).
+    -   Child directory summaries (`mantis-summary.md` files from
+        subdirectories).
+    -   `workspace/historical_learnings.jsonl` (optional, to enrich summaries).
+-   **Writes**:
+    -   Traversal script to workspace.
+    -   `mantis-summary.md` file in each directory containing source code.
+-   **Preconditions**:
+    -   Source files and directory structure must be present.
+-   **Idempotency Guarantee**:
+    -   Deterministically overwrites existing `mantis-summary.md` files in-place
+        with updated rollups.
+
 ## Instructions
 
 Your task is to write and execute a script that will traverse the repository
@@ -52,7 +70,7 @@ Execute the summarize stage as follows:
         passing too many tokens for the LLM to handle.
 
 2.  **Generate the Security Summary (Map-Reduce):** The script should read
-    `historical_learnings.jsonl` (if it exists) to check for past
+    `workspace/historical_learnings.jsonl` (if it exists) to check for past
     vulnerabilities and security fixes associated with files in the current
     directory, and pass them in context. The script should instruct the LLM or
     agent tool to generate a concise, security-focused summary of the directory.
@@ -70,8 +88,8 @@ Execute the summarize stage as follows:
         memory management operations?
     -   **Historical Vulnerabilities & Fixes:** What files or components in this
         directory have historical vulnerabilities or security-related fixes
-        recorded in `historical_learnings.jsonl`? Summarize the past fixes,
-        components affected, and vulnerability classes to highlight past
+        recorded in `workspace/historical_learnings.jsonl`? Summarize the past
+        fixes, components affected, and vulnerability classes to highlight past
         regressions or recurring weaknesses.
 
     The summary must be a reasonable size to incorporate into work on larger

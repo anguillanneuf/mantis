@@ -19,6 +19,23 @@ high-quality, human-readable review packet for developers and stakeholders.
 -   **Description:** Generates a human-readable security review packet
     containing only reproduced findings.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/*.json` (all finding files).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+-   **Writes**:
+    -   `workspace/report/review_packet_pass_<N>.md` (pass-numbered markdown
+        report).
+    -   Updates copy/symlink at `workspace/report/review_packet-latest.md`.
+-   **Preconditions**:
+    -   Calibrated and reproduced findings exist in `workspace/findings/`.
+-   **Idempotency Guarantee**:
+    -   Writes to pass-numbered files. In-place overwrite of
+        `review_packet-latest.md`. Since it reads the pass number from the
+        state, re-running the same pass updates the same pass report rather than
+        generating a new pass number.
+
 ## Instructions
 
 Compile a professional Markdown report detailing only the verified and
@@ -36,11 +53,12 @@ Execute the reporting stage as follows:
             ASan/UBSan), or crash logs proving empirical execution impact
             (treated as empirically reproduced by calibration).
         3.  Valid Exploit Chains (constructed by the chainer, identified by
-            "Exploit Chain" in the title/history) even if they inherited a
-            status of `"statically_confirmed"`. Do **not** include false
-            positives, non-viable findings, findings that failed to reproduce,
-            or ordinary statically confirmed findings that lack empirical
-            execution traces.
+            "Exploit Chain" in the title, or history, or if the
+            "constituent_findings" property is present and non-empty) even if
+            they inherited a status of `"statically_confirmed"`. Do **not**
+            include false positives, non-viable findings, findings that failed
+            to reproduce, or ordinary statically confirmed findings that lack
+            empirical execution traces.
     -   **Severity Filtering:** Exclude findings with a priority of `"LOW"` or
         `"INFO"` from the main report body. You must place these lower-priority
         issues into a separate, dedicated "Appendix: Low and Info Severity
@@ -88,8 +106,11 @@ Execute the reporting stage as follows:
             `patch_status` is `"VERIFICATION_FAILED"` or `"ERROR"`.
     -   **Pass-Numbered Output:** Do not overwrite the same `review_packet.md`
         file on every execution. Instead, determine the current run/pass number
-        of the pipeline (e.g., by checking existing reports in the directory or
-        tracking run sequences). Write the report to a pass-numbered file:
+        `N` of the pipeline (resolved from `"pass_number"` in
+        `workspace/.mantis_state.json`. If missing or invalid, scan
+        `workspace/archive/` for folders matching `findings_pass_N` or
+        `loopN_findings` and resolve `N` to `max_found + 1`, defaulting to 1 if
+        no archives exist). Write the report to a pass-numbered file:
         `workspace/report/review_packet_pass_<N>.md` (where `<N>` is the
         sequential pass number, e.g., `review_packet_pass_1.md`).
     -   **Latest Copy/Symlink:** After writing the pass-numbered report, update

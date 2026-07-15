@@ -19,6 +19,26 @@ to verify validity and filter out noise and false positives.
 -   **Description:** Independently reviews findings and filters out false
     positives.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/` (finding JSON files).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   Target source code files (at paths/lines in `code_paths`).
+-   **Writes**:
+    -   Updates findings on disk in-place (sets `"status"`, `"reasoning"`,
+        `"repro_hints"`, and appends history).
+    -   Writes helper script `workspace/helpers/append_review.py`.
+-   **Preconditions**:
+    -   `workspace/findings/` exists with finding files.
+    -   Target source code files exist.
+-   **Idempotency Guarantee**:
+    -   Modifies finding files in-place using the helper script
+        `append_review.py`. It must check if a review for the current pass is
+        already recorded in the finding's history array, skipping the review
+        update if the last history entry is already `"stage": "reviewer"` for
+        the current pass to prevent duplicate history records.
+
 ## Instructions
 
 Read and evaluate the deduplicated findings against the actual source code of
@@ -141,7 +161,9 @@ Execute your validation as follows:
     {
       "stage": "reviewer",
       "action": "reviewed",
-      "details": "Determined status as [VALID/FALSE_POSITIVE/PROVISIONALLY_VALID/NEEDS_RESEARCH] because [reason]"
+      "details": "Determined status as [VALID/FALSE_POSITIVE/PROVISIONALLY_VALID/NEEDS_RESEARCH] because [reason]",
+      "pass_number": <current_pass_number>,
+      "timestamp": "<current_iso8601_timestamp>"
     }
     ```
 

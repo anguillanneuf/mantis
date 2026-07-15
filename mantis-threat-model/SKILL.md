@@ -17,8 +17,21 @@ architecture defined in the Knowledge Base (KB).
 ## Command Definition
 
 -   **Command:** `/mantis-threat-model`
--   **Description:** Generates or updates `workspace/kb/THREAT_MODEL.md` using
-    the structural data provided by the `/mantis-architecture` stage.
+-   **Description:** Evaluates architectural perimeters, entry points, and trust
+    boundaries to construct the threat model.
+
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   `workspace/kb/architecture.md`.
+    -   `workspace/kb/entities/*.md`.
+-   **Writes**:
+    -   `workspace/kb/THREAT_MODEL.md`.
+-   **Preconditions**:
+    -   Knowledge Base files must exist and be populated.
+-   **Idempotency Guarantee**:
+    -   Deterministically overwrites `workspace/kb/THREAT_MODEL.md` in-place.
 
 ## Instructions
 

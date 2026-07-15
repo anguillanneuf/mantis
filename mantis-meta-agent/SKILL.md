@@ -20,6 +20,24 @@ resilience, and monitors long-running security pipelines.
 -   **Description:** Acts as the persistent supervisor, launching and monitoring
     the automated review campaign.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   Individual JSON findings in `workspace/findings/` (to verify states
+        between subagent transitions).
+-   **Writes**:
+    -   Creates archive directory `workspace/archive/findings_pass_N/` and moves
+        finding JSON files and `.trash/` to it.
+    -   Updates `workspace/.mantis_state.json` to increment `pass_number`.
+-   **Preconditions**:
+    -   Target project must be identified. Campaign orchestration
+        tools/subagents must be ready.
+-   **Idempotency Guarantee**:
+    -   Skips archiving if `workspace/findings/` is empty or missing. Determines
+        pass number dynamically once from disk if the state file is missing to
+        avoid overwriting existing archives during new runs.
+
 ## Instructions
 
 Act as a persistent, long-lived supervisor that drives the Mantis defensive
@@ -42,88 +60,108 @@ to specialized subagents to maintain context efficiency and isolate tasks.
 Execute your orchestration duties in a continuous loop:
 
 1.  **Sub-Agent Orchestration Loop:** For each iteration of the review loop,
-    maintain a loop pass counter `N` (starting at 1 for the first pass, and
-    incrementing by 1 for each subsequent pass). Export this counter as an
-    environment variable `MANTIS_PASS_NUMBER` so that all subagents have access
-    to the current loop context. Delegate the workload sequentially to the
-    specialized subagents. Call each subagent as a tool (or using the
-    `@agent_name` syntax if instructed by your prompt) with a concise
-    instruction to perform its designated task:
+    maintain a loop pass counter `N`.
+
+    -   **Initialization / Startup:** Read `N` from `"pass_number"` in
+        `workspace/.mantis_state.json`. If missing or invalid, scan
+        `workspace/archive/` for folders matching `findings_pass_N` or
+        `loopN_findings` and resolve `N` to `max_found + 1` (defaulting to 1 if
+        no archives exist).
+    -   **State Maintenance:** Once determined, write the current pass `N` and
+        the current timestamp to `"pass_number"` and `"last_updated"` in
+        `workspace/.mantis_state.json` (conforming to the state schema).
+        Delegate the workload sequentially to the specialized subagents. Call
+        each subagent as a tool (or using the `@agent_name` syntax if instructed
+        by your prompt) with a concise instruction to perform its designated
+        task:
 
     -   **Stage 0 (Optional Pre-processing History):** Call the
         `@mantis-history` subagent to analyze repository's version control
         system (VCS) history and extract past vulnerabilities and security fixes
-        into a `historical_learnings.jsonl` file.
+        into a `workspace/historical_learnings.jsonl` file.
+
     -   **Stage 1 (Optional Directory Mapping):** If not already mapped, call
         the `@mantis-summarize` subagent to generate `mantis-summary.md` files
         for each directory to optimize downstream planning and summaries with
         historical context.
+
     -   **Stage 2 (KB Architecture):** Call the `@mantis-architecture` subagent
-        to synthesize the codebase structure and pending `learnings.jsonl` into
-        the permanent Markdown Knowledge Base (`workspace/kb/`).
+        to synthesize the codebase structure and pending
+        `workspace/learnings.jsonl` into the permanent Markdown Knowledge Base
+        (`workspace/kb/`).
+
     -   **Stage 3 (Threat Modeling):** Call the `@mantis-threat-model` subagent
         to read the KB and evaluate/update `workspace/kb/THREAT_MODEL.md`.
+
     -   **Stage 4 (Planning):** Call the `@mantis-plan` subagent to evaluate
-        boundaries, read the KB index, and generate `plan.json` with injected
-        context pointers.
+        boundaries, read the KB index, and generate `workspace/plan.json` with
+        injected context pointers.
+
     -   **Stage 5 (Research):** Call the `@mantis-researcher` subagent to
-        perform the deep code sweep using the context in `plan.json` and
-        populate the `workspace/findings/` directory.
+        perform the deep code sweep using the context in `workspace/plan.json`
+        and populate the `workspace/findings/` directory.
+
     -   **Stage 6 (Deduplication):** Call the `@mantis-dedupe` subagent to
         deduplicate files in the `workspace/findings/` directory.
+
     -   **Stage 7 (Review):** Call the `@mantis-review` subagent to evaluate
         findings in the `workspace/findings/` directory.
+
     -   **Stage 8 (Critic):** Call the `@mantis-critic` subagent to check
         production viability of files in the `workspace/findings/` directory.
+
     -   **Stage 9 (Reproduce):** Call the `@mantis-reproduce` subagent to
         develop crash reproducers and update files in the `workspace/findings/`
         directory.
+
     -   **Stage 10 (Chain):** Call the `@mantis-chain` subagent to analyze the
         current validated findings and the Knowledge Base to construct
         multi-step exploit chains, outputting "Super Findings" into the
         `workspace/findings/` directory.
+
     -   **Stage 11 (Patch & Verify):** Call the `@mantis-patch` subagent to
         generate fixes, and update files in the `workspace/findings/` directory.
         Instruct it to repeatedly call a fresh `@mantis-reproduce` subagent
         against its patches to attempt a bypass, refining the fix until the
         reproducer can no longer bypass it.
+
     -   **Stage 12 (Calibrate):** Call the `@mantis-calibrate` subagent to read
         the `workspace/findings/` directory and append final calibration metrics
         to each finding file.
+
     -   **Stage 13 (Reflect):** Call the `@mantis-reflect` subagent to parse the
         execution trajectories of the round and append false assumptions or tool
-        failures to the `learnings.jsonl` inbox.
+        failures to the `workspace/learnings.jsonl` inbox.
+
     -   **Stage 14 (Report):** Call the `@mantis-report` subagent to generate
         the human-readable review packet (`workspace/report/review_packet.md`)
         containing only reproduced findings, evidence, and patches.
+
     -   **Stage 15 (Archive & KB Verification):**
+
         1.  **Call the `@mantis-architecture` subagent** to perform a final
             synthesis of the current round's findings (especially
             `"FALSE_POSITIVE"`, `"NON_VIABLE"`, `"SAMPLE_OR_TEST"`, and
             `"VERIFIED_SECURE"`) into the permanent Markdown Knowledge Base
             (`workspace/kb/`).
         2.  Verify that the KB updates were successfully written and that
-            `learnings.jsonl` was processed.
-        3.  **Archive** the `workspace/findings/` directory: If
-            `workspace/findings/` exists and contains findings, ensure the
-            target archive directory exists (e.g., run `mkdir -p
-            workspace/archive/findings_pass_N/` where `N` is calculated below).
-            Determine the current pass number `N` dynamically if not provided in
-            the environment by scanning for directories matching either
-            `workspace/archive/findings_pass_N` or
-            `workspace/archive/loopN_findings` on disk, extracting the loop pass
-            integer `N` from each (e.g. by capturing the digits inside
-            `findings_pass_N` or `loopN_findings` using regex, rather than
-            assuming the digits appear only as a suffix at the end of the folder
-            name), finding the maximum number, and adding 1 (starting at 1 if
-            none exist). Move all `.json` files and the `.trash/` directory if
-            it exists to the target archive directory (e.g., `mv
-            workspace/findings/*.json workspace/archive/findings_pass_N/` and
-            `mv workspace/findings/.trash/ workspace/archive/findings_pass_N/`).
-            This clears the active state while preserving the empty
-            `workspace/findings/` directory for subsequent loop runs. If the
-            findings directory is empty or does not exist, ensure it exists and
-            skip archiving.
+            `workspace/learnings.jsonl` was processed.
+        3.  **Archive and Increment Pass:**
+            -   Read the current pass number `N` from the state file
+                `workspace/.mantis_state.json`.
+            -   If `workspace/findings/` exists and contains findings:
+                -   Ensure the target archive directory exists:
+                    `workspace/archive/findings_pass_N/`.
+                -   Move all `.json` files and the `.trash/` directory (if it
+                    exists) to that archive directory (e.g., `mv
+                    workspace/findings/*.json
+                    workspace/archive/findings_pass_N/`).
+            -   If the findings directory is empty or does not exist, ensure it
+                exists and skip archiving.
+            -   Increment `N` by 1 to get the new pass number `N_new = N + 1`.
+            -   Write the new pass number `N_new` and the current ISO 8601
+                timestamp to `"pass_number"` and `"last_updated"` in
+                `workspace/.mantis_state.json`.
 
 2.  **Intelligent Supervision & Error Handling:**
 

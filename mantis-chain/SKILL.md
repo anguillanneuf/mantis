@@ -20,6 +20,28 @@ complex, multi-step exploit chains.
 -   **Description:** Analyzes individual security findings to identify and
     construct complex exploit chains.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/` (validated finding JSON files where status is
+        `"VALID"`, and viability is `"VIABLE"`, `"CONDITIONAL_VIABLE"`, or
+        `"SAMPLE_OR_TEST"`).
+    -   `workspace/kb/entities/*.md` and `workspace/kb/vulnerabilities/*.md`
+        (knowledge base primitives).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+-   **Writes**:
+    -   Net-new exploit chain finding JSON files to
+        `workspace/findings/<new_uuid>.json`. Original findings are left
+        unmodified.
+-   **Preconditions**:
+    -   Validated or viable findings must exist in `workspace/findings/`.
+-   **Idempotency Guarantee**:
+    -   Before writing a new exploit chain finding, the skill must check
+        existing exploit chain findings in `workspace/findings/` by comparing
+        the constituent finding UUIDs. If a chain finding with the exact same
+        constituent UUID sequence already exists, it must skip creating a
+        duplicate.
+
 ## Instructions
 
 Read the current batch of validated findings and explore whether multiple
@@ -31,8 +53,8 @@ Execute the chaining stage as follows:
 1.  **Load Primitives & Validated Findings:**
 
     -   Read the JSON files in the `workspace/findings/` directory. Filter for
-        findings that have passed validation (e.g., status is `"VALID"` or
-        viability is `"VIABLE"` or `"SAMPLE_OR_TEST"`).
+        findings that have passed validation (e.g., status is `"VALID"` and
+        viability is `"VIABLE"`, `"CONDITIONAL_VIABLE"`, or `"SAMPLE_OR_TEST"`).
     -   Read the Markdown Knowledge Base (`workspace/kb/entities/` and
         `workspace/kb/vulnerabilities/`) to identify architectural primitives
         that might not be bugs on their own, but could serve as stepping stones
@@ -61,7 +83,10 @@ Execute the chaining stage as follows:
         original isolated findings. They still need to be patched individually.
     -   Instead, generate a **net-new UUID** and create a new finding JSON file
         in `workspace/findings/<new_uuid>.json`.
-    -   This "Super Finding" must clearly document the sequence of execution.
+    -   **Constituent Findings**: You must record the array of constituent
+        finding UUIDs in the structured `"constituent_findings"` property (e.g.,
+        `["UUID_A", "UUID_B"]`). This clearly documents the links of the exploit
+        chain.
     -   **Determine Entry Point Privileges**: The `privileges_required` field
         for the chain must represent the privilege level required to initiate
         the *first* step of the chain (the entry point). For example, if the
@@ -110,11 +135,14 @@ Execute the chaining stage as follows:
       "status": "VALID",
       "production_viability": "VIABLE / SAMPLE_OR_TEST / CONDITIONAL_VIABLE",
       "repro_status": "statically_confirmed / not_attempted",
+      "constituent_findings": ["UUID_A", "UUID_B"],
       "history": [
         {
           "stage": "chainer",
           "action": "created",
-          "details": "Constructed by chaining findings [UUID_A] and [UUID_B]."
+          "details": "Constructed by chaining findings [UUID_A] and [UUID_B].",
+          "pass_number": <current_pass_number>,
+          "timestamp": "<current_iso8601_timestamp>"
         }
       ]
     }

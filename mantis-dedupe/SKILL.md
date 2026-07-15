@@ -20,6 +20,28 @@ records.
 -   **Description:** Consolidates raw security findings to eliminate redundant
     reports.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/` (raw finding JSON files, ignoring `.trash/`).
+    -   `workspace/learnings.jsonl` (to skip findings already evaluated in the
+        current loop).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+-   **Writes**:
+    -   Moves duplicate findings to `workspace/findings/.trash/` after setting
+        `"status": "DUPLICATE"` and `"duplicate_of"`.
+    -   Appends transaction logs to `workspace/.tx_log.jsonl`.
+    -   Generates/executes merging script `workspace/helpers/merge_findings.py`.
+    -   Updates primary finding `workspace/findings/<primary_id>.json` (merges
+        fields and history).
+-   **Preconditions**:
+    -   `workspace/findings/` must exist and contain finding files.
+-   **Idempotency Guarantee**:
+    -   Cross-references against `workspace/learnings.jsonl` to filter loop
+        duplicates. Logs transactions to `workspace/.tx_log.jsonl` to support
+        tracking and potential rollbacks. Deterministic merging rules
+        implemented in `merge_findings.py`.
+
 ## Instructions
 
 Review a list of security findings and merge duplicate findings that refer to
@@ -34,28 +56,29 @@ Execute your task as follows:
         notify the user and exit.
     -   *Important:* Ignore hidden files and directories (such as the `.trash/`
         subdirectory) when listing or processing findings.
-    -   Check if `learnings.jsonl` exists in the workspace. If it does, read its
-        contents. This file represents findings and insights that have already
-        been evaluated by downstream agents (like Reviewer or Patch) *within
-        this current loop iteration* against this specific version of the
-        codebase.
+    -   Check if `workspace/learnings.jsonl` exists in the workspace. If it
+        does, read its contents. This file represents findings and insights that
+        have already been evaluated by downstream agents (like Reviewer or
+        Patch) *within this current loop iteration* against this specific
+        version of the codebase.
     -   *Important:* Do NOT read or deduplicate against
-        `historical_learnings.jsonl` (VCS history), as we want to catch
-        regressions if old bugs were reintroduced.
+        `workspace/historical_learnings.jsonl` (VCS history), as we want to
+        catch regressions if old bugs were reintroduced.
 
 2.  **Filter Loop Duplicates:** Cross-reference the current findings against the
-    `learnings.jsonl` entries (using `code_paths` and `title` similarities). If
-    a current finding exactly matches a flaw that was already processed in this
-    loop (regardless of its status in `learnings.jsonl`), you must **soft-delete
-    the new finding file** by ensuring the trash directory exists (e.g., `mkdir
-    -p workspace/findings/.trash/`). Before moving the file, update the
-    duplicate finding file to set `"status": "DUPLICATE"` and `"duplicate_of":
+    `workspace/learnings.jsonl` entries (using `code_paths` and `title`
+    similarities). If a current finding exactly matches a flaw that was already
+    processed in this loop (regardless of its status in
+    `workspace/learnings.jsonl`), you must **soft-delete the new finding file**
+    by ensuring the trash directory exists (e.g., `mkdir -p
+    workspace/findings/.trash/`). Before moving the file, update the duplicate
+    finding file to set `"status": "DUPLICATE"` and `"duplicate_of":
     "<primary_uuid>"` (where primary_uuid is the UUID of the finding from
-    `learnings.jsonl` if available, or null). Then, move it to the trash staging
-    directory (`workspace/findings/.trash/`), log the transaction in
-    `workspace/.tx_log.jsonl` (action: `"loop_filter"`), and drop it from your
-    active list. This prevents the pipeline from getting stuck re-evaluating the
-    same issues.
+    `workspace/learnings.jsonl` if available, or null). Then, move it to the
+    trash staging directory (`workspace/findings/.trash/`), log the transaction
+    in `workspace/.tx_log.jsonl` (action: `"loop_filter"`), and drop it from
+    your active list. This prevents the pipeline from getting stuck
+    re-evaluating the same issues.
 
 3.  **Filter Duplicate Findings in Current Batch:** Check the current findings
     against each other to find duplicates (using `code_paths` and `title`
@@ -96,8 +119,11 @@ Execute your task as follows:
         -   **Description, Mitigation, & Impact:** Concatenate cleanly.
         -   **History:** Concatenate and preserve all `"history"` entries from
             the merged findings. Append a new entry to the `"history"` array for
-            this merge action, referencing the IDs of the deleted duplicate
-            findings that were merged into this one.
+            this merge action conforming to the schema (containing `"stage":
+            "dedupe"`, `"action": "merge"`, `"details": "Merged duplicate
+            findings: [comma-separated-ids]"`, `"pass_number":
+            <current_pass_number>`, and `"timestamp":
+            "<current_iso8601_timestamp>"`).
     3.  **Execute the Script:** Run your script to update the primary finding's
         file (`workspace/findings/<primary_id>.json`) on disk.
 

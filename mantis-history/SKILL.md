@@ -2,7 +2,7 @@
 name: mantis-history
 description: >-
   Analyzes the repository's version control system (VCS) history to extract past vulnerabilities, security fixes, and vulnerability patterns.
-  Use as an initial pre-processing step to build a historical vulnerabilities database (historical_learnings.jsonl) that informs subsequent stages about past issues and fixes.
+  Use as an initial pre-processing step to build a historical vulnerabilities database (workspace/historical_learnings.jsonl) that informs subsequent stages about past issues and fixes.
   Don't use for code reviews, writing test scripts, or patching code.
 ---
 
@@ -20,7 +20,25 @@ downstream skills.
 -   **Command:** `/mantis-history`
 -   **Description:** Analyzes repository's version control system (VCS) history
     to extract past vulnerabilities and fixes, producing a structured historical
-    learnings file (`historical_learnings.jsonl`).
+    learnings file (`workspace/historical_learnings.jsonl`).
+
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   Codebase directory structure and key files (to determine stack).
+    -   VCS history logs (commit messages, titles, diffs).
+    -   `mantis-summary.md` (optional, if available).
+    -   Internal history analysis cache (optional, if exists).
+-   **Writes**:
+    -   VCS extraction script (written on-the-fly to workspace).
+    -   `workspace/historical_learnings.jsonl`.
+    -   Internal history analysis cache.
+-   **Preconditions**:
+    -   Target repository and VCS logs must be accessible.
+-   **Idempotency Guarantee**:
+    -   The extraction script maintains a local cache of analyzed
+        `revision_id`s, skipping any already processed commits.
 
 ## Instructions
 
@@ -42,6 +60,9 @@ Execute the history analysis stage as follows:
 
 2.  **Phase 2: Write a History Extraction Script:**
 
+    -   Read the active pass number from the state file
+        `workspace/.mantis_state.json` and resolve the current ISO 8601
+        timestamp.
     -   Write a script (e.g. Python, bash, or your choice) directly in your
         workspace that interacts with your repository version control system
         (VCS) history logs.
@@ -92,10 +113,10 @@ Execute the history analysis stage as follows:
         security vulnerabilities are fixed without realizing they were
         vulnerabilities.
     -   **Output Format:** Instruct your script to output the extracted findings
-        into a JSONL file named `historical_learnings.jsonl` in the workspace
-        root, matching the following format:
+        into a JSONL file named `workspace/historical_learnings.jsonl`, matching
+        the following format:
 
-### Historical Learnings Schema Format (`historical_learnings.jsonl`)
+### Historical Learnings Schema Format (`workspace/historical_learnings.jsonl`)
 
 ```json
 {
@@ -110,7 +131,9 @@ Execute the history analysis stage as follows:
     {
       "stage": "history_extractor",
       "action": "created",
-      "details": "Extracted from repository revision history."
+      "details": "Extracted from repository revision history.",
+      "pass_number": <current_pass_number>,
+      "timestamp": "<current_iso8601_timestamp>"
     }
   ]
 }
@@ -118,9 +141,9 @@ Execute the history analysis stage as follows:
 
 1.  **Phase 3: Execute and Verify:**
     -   Run the script you just wrote to analyze the VCS history, process
-        revisions, and generate the `historical_learnings.jsonl` file.
+        revisions, and generate the `workspace/historical_learnings.jsonl` file.
     -   Wait for the script to finish and verify that
-        `historical_learnings.jsonl` has been written successfully and contains
-        extracted data.
+        `workspace/historical_learnings.jsonl` has been written successfully and
+        contains extracted data.
 
 When complete, notify the user.

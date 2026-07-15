@@ -21,6 +21,32 @@ logs to long-term memory.
     isolation (shadow directories or file backups), applies patches, and
     verifies them.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/` (reproduced finding JSON files where
+        `patch_status` is not `"VERIFIED_SECURE"`).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   Target source code files.
+    -   Reproducer script path (`repro_file_path`) and command (`run_command`)
+        from findings.
+    -   Pre-existing backup files matching finding ID (if Option B is used).
+-   **Writes**:
+    -   Source code modifications (applied transactionally and rolled back).
+    -   Updates finding JSON files in-place (sets `"patch_status"`,
+        `"patch_diff"`, re-attack details, and history).
+    -   Appends to `workspace/learnings.jsonl`.
+    -   Reusable helper script `workspace/helpers/append_patch.py`.
+-   **Preconditions**:
+    -   Findings must exist in `workspace/findings/`.
+-   **Idempotency Guarantee**:
+    -   Skips findings where `patch_status` is already `"VERIFIED_SECURE"`.
+    -   Transactional isolation: modifies code inside shadow directories
+        (`/tmp/mantis-shadow-[id]/`) or creates temporary file backups
+        (`target.c.bak-[id]`), restoring baseline state upon completion (using
+        `try...finally` rollback mechanisms).
+    -   Reuses the existing `append_patch.py` script once created.
+
 ## Instructions
 
 Fix successfully reproduced security flaws without breaking standard code
@@ -31,9 +57,10 @@ Execute the patching and verification stage as follows:
 1.  **Load Findings to Patch:** Read the JSON files in the `workspace/findings/`
     directory. Filter for findings where `patch_status` is NOT
     `"VERIFIED_SECURE"` AND (either `repro_status` is `"reproduced"` OR the
-    finding is an exploit chain, e.g., the title starts with `"Exploit Chain:"`
-    or history has an entry from the `"chainer"` stage). If none exist, notify
-    the user.
+    finding is an exploit chain, e.g., the title starts with `"Exploit Chain:"`,
+    or history has an entry from the `"chainer"` stage, or the
+    `"constituent_findings"` property is present and non-empty). If none exist,
+    notify the user.
 
 2.  **Generate and Apply Minimal Patches:** For each reproduced security flaw:
 
@@ -48,17 +75,19 @@ Execute the patching and verification stage as follows:
         mitigation string in place of the `patch_diff` field.
 
     -   **Exploit Chains:** If the finding is an exploit chain (identified by
-        `"Exploit Chain:"` in the title or history details indicating it was
-        constructed by chaining), do **not** generate a code patch or diff.
-        Instead, monitor the patch status of its constituent findings (listed in
-        its history). **Important:** You must defer evaluating exploit chains
-        until all individual findings in the batch have been processed, so that
-        the latest patch statuses of their constituents are available on disk.
-        Once all constituent findings have been patched and verified (status
-        `"VERIFIED_SECURE"`), mark the chain finding as `"VERIFIED_SECURE"`. If
-        any constituent patch fails, mark the chain as `"VERIFICATION_FAILED"`.
-        Skip branch isolation, testing, and re-attack steps for the chain
-        finding itself.
+        `"Exploit Chain:"` in the title, or history details, or if the
+        `"constituent_findings"` property is present and non-empty), do **not**
+        generate a code patch or diff. Instead, identify its sub-findings by
+        reading the `"constituent_findings"` array of UUIDs. Monitor the patch
+        status of these constituent findings (listed on disk as
+        `workspace/findings/<uuid>.json`). **Important:** You must defer
+        evaluating exploit chains until all individual findings in the batch
+        have been processed, so that the latest patch statuses of their
+        constituents are available on disk. Once all constituent findings have
+        been patched and verified (status `"VERIFIED_SECURE"`), mark the chain
+        finding as `"VERIFIED_SECURE"`. If any constituent patch fails, mark the
+        chain as `"VERIFICATION_FAILED"`. Skip branch isolation, testing, and
+        re-attack steps for the chain finding itself.
 
     -   *Optional Parallel Trajectory Search:* If your framework supports
         subagents, you may spawn multiple concurrent subagents to design diverse
@@ -137,10 +166,12 @@ Execute the patching and verification stage as follows:
         write a new reproducer variant that bypasses your patch to reach the
         same root cause. Only if the re-attack also fails to bypass the fix
         should you mark the patch as fully successful! To ensure true
-        independence, launch a fresh `@mantis-reproduce` subagent against the
-        patched code to perform this re-attack. You must map the fresh agent's
-        output into the `reattack_*` schema fields to prevent overwriting the
-        initial `repro_*` evidence.
+        independence, launch a fresh `@mantis-reproduce --reattack` subagent
+        against the patched code directory to perform this re-attack. The
+        reproducer agent running with `--reattack` will write its outcomes
+        directly into the primary finding's `reattack_status`,
+        `reattack_file_path`, `reattack_run_command`, and `reattack_output`
+        fields on disk, keeping the initial `repro_*` fields untouched.
     -   **VERIFICATION FAILED:** If the sandbox execution still triggers the
         bug, or if your re-attack successfully bypasses your patch, the patch is
         insufficient. Re-evaluate and adapt your fix.
@@ -182,9 +213,9 @@ Execute the patching and verification stage as follows:
 
 5.  **Append to Long-Term Memory (Continuous Reviewing Link):** For each
     security flaw processed, append a single structured JSON line to a workspace
-    database file named `learnings.jsonl` (using append mode). This allows the
-    strategist (`/mantis-plan`) to read these historical records in subsequent
-    passes and avoid proposing fixes for already patched files.
+    database file named `workspace/learnings.jsonl` (using append mode). This
+    allows the strategist (`/mantis-plan`) to read these historical records in
+    subsequent passes and avoid proposing fixes for already patched files.
 
     -   **Memory Entry Format:** `{"title": "[security_flaw_title]",
         "code_paths": ["[path1:line1]"], "status": "[VERIFIED_SECURE /
@@ -213,7 +244,9 @@ Execute the patching and verification stage as follows:
     {
       "stage": "patch",
       "action": "patched",
-      "details": "Patch status evaluated as [VERIFIED_SECURE/VERIFICATION_FAILED/ERROR]"
+      "details": "Patch status evaluated as [VERIFIED_SECURE/VERIFICATION_FAILED/ERROR]",
+      "pass_number": <current_pass_number>,
+      "timestamp": "<current_iso8601_timestamp>"
     }
     ```
 

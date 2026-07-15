@@ -92,12 +92,12 @@ graph TD
         Rpt["/mantis-report"]
     end
 
-    FileHist[("historical_learnings.jsonl")]
+    FileHist[("workspace/historical_learnings.jsonl")]
     FileSum[("mantis-summary.md")]
     FileKB[/"workspace/kb/ (Markdown KB)"/]
-    FilePlan[("plan.json")]
+    FilePlan[("workspace/plan.json")]
     FileFind[("workspace/findings/*.json")]
-    FileLearn[("learnings.jsonl")]
+    FileLearn[("workspace/learnings.jsonl")]
     FileRpt[/"workspace/report/review_packet.md"/]
 
     Meta --> Hist
@@ -157,13 +157,14 @@ graph TD
 2.  **`/mantis-history` (History Extractor):** An optional pre-processing step
     that analyzes the repository's version control system (VCS) history to
     extract past vulnerabilities, security fixes, and vulnerability patterns,
-    saving findings to `historical_learnings.jsonl`.
+    saving findings to `workspace/historical_learnings.jsonl`.
 3.  **`/mantis-summarize` (Summarizer):** An optional pre-processing step that
     generates a `mantis-summary.md` for each directory, reading past
-    vulnerabilities from `historical_learnings.jsonl` to enrich summaries and
-    provide a quick reference map to optimize downstream planning and research.
+    vulnerabilities from `workspace/historical_learnings.jsonl` to enrich
+    summaries and provide a quick reference map to optimize downstream planning
+    and research.
 4.  **`/mantis-architecture` (Knowledge Base Architect):** Analyzes the codebase
-    and clears the `learnings.jsonl` inbox to synthesize a permanent,
+    and clears the `workspace/learnings.jsonl` inbox to synthesize a permanent,
     interlinked Markdown Knowledge Base (`workspace/kb/`) detailing entities,
     data flows, and historical vulnerability classes.
 5.  **`/mantis-threat-model` (Threat Modeler):** Evaluates the entities and
@@ -171,8 +172,8 @@ graph TD
     `workspace/kb/THREAT_MODEL.md`, focusing on trust boundaries and attacker
     profiles.
 6.  **`/mantis-plan` (Strategist):** Scans workspace boundaries and reads the KB
-    indices to output a targeted review strategy into `plan.json`, injecting
-    specific `kb_references` file paths for context.
+    indices to output a targeted review strategy into `workspace/plan.json`,
+    injecting specific `kb_references` file paths for context.
 7.  **`/mantis-researcher` (Mantis Researcher):** Executes file-by-file triage
     and deep security flaw reviews, outputting hotspots as individual JSON files
     in `workspace/findings/`.
@@ -184,7 +185,7 @@ graph TD
 10. **`/mantis-critic` (Critic):** Verifies release-build crash reproducibility
     (ignoring debug/assert checks), updates production viability in
     `workspace/findings/<id>.json`, and appends false positives/non-viable paths
-    to `learnings.jsonl`.
+    to `workspace/learnings.jsonl`.
 11. **`/mantis-reproduce` (Proof-of-Concept Developer):** Writes
     Proof-of-Concept Reproduction Scripts (Repros) or raw payloads, executes
     them in isolated environments such as gVisor or Virtual Machines, and
@@ -195,7 +196,8 @@ graph TD
     `workspace/findings/`.
 13. **`/mantis-patch` (Patcher):** Generates and applies code fixes, runs
     post-patch validation tests inside the sandbox, updates patch status in
-    `workspace/findings/<id>.json`, and appends logs to `learnings.jsonl`.
+    `workspace/findings/<id>.json`, and appends logs to
+    `workspace/learnings.jsonl`.
 14. **`/mantis-calibrate` (Risk Calibrator):** Calculates a final numerical
     Mantis Risk Score (1-10) for each finding in the workspace directory based
     on impact, evidence, and viability, appending the results directly to each
@@ -203,7 +205,7 @@ graph TD
 15. **`/mantis-reflect` (Reflector):** Parses the execution trajectories of the
     agents from the current round, extracting false assumptions, tool failures,
     and successes, and appends these structured insights to the
-    `learnings.jsonl` inbox.
+    `workspace/learnings.jsonl` inbox.
 16. **`/mantis-report` (Reporter):** Generates a human-readable security review
     packet containing verified/reproduced findings, evidence, risk rationales,
     and patch information at `workspace/report/review_packet.md`.
@@ -460,10 +462,10 @@ deterministic execution, you can build a pipeline that:
 
 1.  **Iterates Programmatically:** A harness loops over the workspace, invoking
     the static and dynamic skills via the CLI.
-2.  **Feeds Learnings Back:** The harness takes the resulting `learnings.jsonl`
-    file and invokes `/mantis-plan` to generate a newly updated `plan.json`,
-    effectively allowing the AI to guide the deterministic runner on what to
-    analyze next.
+2.  **Feeds Learnings Back:** The harness takes the resulting
+    `workspace/learnings.jsonl` file and invokes `/mantis-plan` to generate a
+    newly updated `workspace/plan.json`, effectively allowing the AI to guide
+    the deterministic runner on what to analyze next.
 3.  **Hardcodes the Execution Sandbox:** You can optionally configure the
     deterministic versions of `/mantis-reproduce` and `/mantis-patch` to *only
     generate* the patch or script file, leaving the actual execution and grading
@@ -547,9 +549,9 @@ configure your environment as follows:
         other append-only storage mechanisms.
     *   **GCS Versioning:** Enable Object Versioning on the GCS bucket. This
         provides a mechanism so that even if the AI or an untrusted crash
-        reproducer payload overwrites a file (like `learnings.jsonl`), previous
-        states are preserved as non-current versions, preventing the AI from
-        permanently deleting the history.
+        reproducer payload overwrites a file (like `workspace/learnings.jsonl`),
+        previous states are preserved as non-current versions, preventing the AI
+        from permanently deleting the history.
 
 ### 2. Bypassing Interactive Prompts (Unattended Mode)
 
@@ -711,18 +713,18 @@ token investment:
 
 ## Roadmap / Future Work
 
-*   **Skill Self-Improvement (Meta-Learning):** The current `learnings.jsonl`
-    and Knowledge Base (KB) architecture tracks codebase-specific empirical
-    outcomes to adapt the `THREAT_MODEL.md` and context pointers. Future
-    iterations of the pipeline could take this a step further and use this
-    historical data to reflect on and automatically rewrite its own `SKILL.md`
-    prompts. For example, if a certain type of hallucination is repeatedly
-    caught by the Critic, a self-improvement meta-agent could update the
-    Researcher's `SKILL.md` instructions to explicitly filter out that specific
-    pattern before it even reaches the Review stage. **Security Note:**
-    Committing automated changes to `SKILL.md` files must always be human-gated
-    to prevent an attacker from using prompt injection (e.g., via a malicious
-    payload in a target file) to trick the meta-agent into ignoring a
+*   **Skill Self-Improvement (Meta-Learning):** The current
+    `workspace/learnings.jsonl` and Knowledge Base (KB) architecture tracks
+    codebase-specific empirical outcomes to adapt the `THREAT_MODEL.md` and
+    context pointers. Future iterations of the pipeline could take this a step
+    further and use this historical data to reflect on and automatically rewrite
+    its own `SKILL.md` prompts. For example, if a certain type of hallucination
+    is repeatedly caught by the Critic, a self-improvement meta-agent could
+    update the Researcher's `SKILL.md` instructions to explicitly filter out
+    that specific pattern before it even reaches the Review stage. **Security
+    Note:** Committing automated changes to `SKILL.md` files must always be
+    human-gated to prevent an attacker from using prompt injection (e.g., via a
+    malicious payload in a target file) to trick the meta-agent into ignoring a
     vulnerability class globally.
 *   **Software Dark Factory:** Integrate this pipeline into an entirely AI
     driven software development. Instead of vulnerable discovery for action by

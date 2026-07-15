@@ -20,6 +20,28 @@ produce a final risk score (1-10).
 -   **Description:** Calibrates the risk level of findings based on evidence and
     impact.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/*.json` (all finding files to load full pipeline
+        state).
+    -   `workspace/kb/THREAT_MODEL.md` (if exists, to check threat boundary
+        overrides and asset criticality).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+-   **Writes**:
+    -   Updates finding files in-place with scoring/calibration fields
+        (`impact_score`, `likelihood_score`, `availability_tier`,
+        `inferred_exposure`, `attacker_position`, `mantis_risk_score`,
+        `priority`, `sanity_triage_applied`, `outrage_commentary`,
+        `executive_summary`).
+    -   Reusable helper script `workspace/helpers/append_calibrate.py`.
+-   **Preconditions**:
+    -   Confirmed or raw findings must exist in `workspace/findings/`.
+-   **Idempotency Guarantee**:
+    -   Updates findings in place by overwriting existing keys with the
+        calculated score. Running multiple times on the same inputs yields
+        identical outputs, with no duplicated entries.
+
 ## Instructions
 
 Convert the raw security findings and their empirical results (repro/patch) into
@@ -33,10 +55,9 @@ Execute the calibration as follows:
         the pipeline appends data to each finding file at each stage, these
         files provide the complete picture of each finding's journey (including
         its `id`, reproduction status, and production viability).
-    -   **Missing Fields Fallbacks:** If any finding is missing validation,
-        viability, or reproduction fields (such as chained findings), apply the
-        following fallback defaults before scoring:
-        -   If `status` is missing, treat it as `"PROVISIONALLY_VALID"`.
+    -   **Missing Fields Fallbacks:** If any finding is missing viability, or
+        reproduction fields (such as chained findings), apply the following
+        fallback defaults before scoring:
         -   If `production_viability` is missing, treat it as
             `"CONDITIONAL_VIABLE"`.
         -   If `repro_status` is missing, treat it as `"not_attempted"`.
@@ -472,6 +493,17 @@ Execute the calibration as follows:
         that fired, most-restrictive first, or null)
     -   `"outrage_commentary"` (your reasoning about the outrage factor)
     -   `"executive_summary"`
+    -   An entry to the `"history"` array:
+
+        ```json
+        {
+          "stage": "calibrate",
+          "action": "calibrated",
+          "details": "Calculated risk score as [score] and priority as [priority].",
+          "pass_number": <current_pass_number>,
+          "timestamp": "<current_iso8601_timestamp>"
+        }
+        ```
 
 Save your updates to the individual finding files. When complete, notify the
 user.

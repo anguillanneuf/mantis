@@ -2,7 +2,7 @@
 name: mantis-reflect
 description: >-
   Extracts learnings from execution trajectories at the end of a Mantis loop.
-  Use to parse agent conversations, extract successes, failures, and false assumptions, and append them to learnings.jsonl.
+  Use to parse agent conversations, extract successes, failures, and false assumptions, and append them to workspace/learnings.jsonl.
   Don't use for analyzing source code or writing patches.
 ---
 
@@ -19,7 +19,23 @@ mistakes.
 
 -   **Command:** `/mantis-reflect`
 -   **Description:** Parses execution trajectories from the current loop and
-    appends structured insights to `learnings.jsonl`.
+    appends structured insights to `workspace/learnings.jsonl`.
+
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   `transcript.jsonl` or `conversation.jsonl` (execution logs from the
+        current round's subagents).
+-   **Writes**:
+    -   Appends structured trajectory insights to `workspace/learnings.jsonl`.
+-   **Preconditions**:
+    -   Execution logs for the current round must exist and contain entries.
+-   **Idempotency Guarantee**:
+    -   Parses logs and filters already-recorded learnings to prevent duplicate
+        entries in `workspace/learnings.jsonl`. It should check existing lines
+        in `workspace/learnings.jsonl` to ensure it doesn't duplicate the same
+        insight if retried.
 
 ## Instructions
 
@@ -49,11 +65,10 @@ Execute the reflection stage as follows:
     -   **Successful Strategies:** Did a patcher successfully fix a bug using a
         specific idiomatic pattern that should be reused?
 
-3.  **Append to the Inbox (`learnings.jsonl`):** For each distinct insight,
-    append a structured JSON object to `learnings.jsonl` in the root workspace
-    directory.
+3.  **Append to the Inbox (`workspace/learnings.jsonl`):** For each distinct
+    insight, append a structured JSON object to `workspace/learnings.jsonl`.
 
-    ### Reflection Schema Format (`learnings.jsonl`)
+    ### Reflection Schema Format (`workspace/learnings.jsonl`)
 
     ```json
     {"type": "trajectory_insight", "action": "add | update | remove", "target_entity": "[e.g., auth_module.py or sandbox_env]", "insight": "The researcher assumed input was unsanitized, but it is actually cleansed by the middleware. Do not attempt XSS on this parameter.", "source_stage": "mantis-researcher"}

@@ -15,9 +15,35 @@ inside isolated sandbox environments to empirically verify bugs.
 
 ## Command Definition
 
--   **Command:** `/mantis-reproduce`
+-   **Command:** `/mantis-reproduce [--reattack]`
 -   **Description:** Generates and runs crash reproducers to verify security
-    flaws.
+    flaws. Use `--reattack` when executing as part of patch verification to
+    isolate re-attack outcomes.
+
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/` (viable/conditional findings).
+    -   Repository source files (to analyze trigger paths).
+    -   `workspace/archive/.repro_attempts.json`.
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+-   **Writes**:
+    -   PoC reproduction files (e.g. `poc.py`, `crash.payload`).
+    -   If run normally: updates findings in-place (sets `"repro_status"`,
+        `"repro_file_path"`, `"run_command"`, `"repro_output"`, and appends
+        history). Updates status to `"VALID"` if provisionally valid.
+    -   If run with `--reattack`: updates findings in-place (sets
+        `"reattack_status"`, `"reattack_file_path"`, `"reattack_run_command"`,
+        `"reattack_output"`, and appends history with stage `"reattack"`). Does
+        not modify `"repro_*"` fields or `"status"`.
+    -   Updates `workspace/archive/.repro_attempts.json` atomically.
+-   **Preconditions**:
+    -   Findings must exist in `workspace/findings/`.
+    -   Sandbox/container runtime environment must be available.
+-   **Idempotency Guarantee**:
+    -   Updates findings in place. Uses `.repro_attempts.lock` file locking and
+        atomic temporary file swaps (`os.replace` on `.repro_attempts.json.tmp`)
+        to guarantee concurrency safety and retry stability.
 
 ## Instructions
 
@@ -159,25 +185,54 @@ Execute the reproduction stage under these constraints:
             6.  Close the lock file descriptor to release the lock
                 (automatically handled by exiting the `with` context manager).
 
-    You must append or update the following on the existing object:
+    Depending on whether the `--reattack` flag is provided:
 
-    -   `"repro_status"` (`"reproduced"`, `"statically_confirmed"`,
-        `"not_attempted"`, or `"failed_to_reproduce"`).
-    -   `"repro_file_path"`
-    -   `"run_command"`
-    -   `"repro_output"`
-    -   If reproduction succeeds (`repro_status` is evaluated as `"reproduced"`
-        or `"statically_confirmed"`) and the finding's current `"status"` is
-        `"PROVISIONALLY_VALID"`, you **must** update `"status"` to `"VALID"`.
-    -   An entry to the `"history"` array:
+    *   **If run normally (no `--reattack` flag):** You must append or update
+        the following on the existing object:
 
-    ```json
-    {
-      "stage": "reproduce",
-      "action": "reproduced",
-      "details": "Reproduction status evaluated as [reproduced/failed_to_reproduce] using command: [run_command]"
-    }
-    ```
+        -   `"repro_status"` (`"reproduced"`, `"statically_confirmed"`,
+            `"not_attempted"`, or `"failed_to_reproduce"`).
+        -   `"repro_file_path"`
+        -   `"run_command"`
+        -   `"repro_output"`
+        -   If reproduction succeeds (`repro_status` is evaluated as
+            `"reproduced"` or `"statically_confirmed"`) and the finding's
+            current `"status"` is `"PROVISIONALLY_VALID"`, you **must** update
+            `"status"` to `"VALID"`.
+        -   An entry to the `"history"` array:
+
+            ```json
+            {
+              "stage": "reproduce",
+              "action": "reproduced",
+              "details": "Reproduction status evaluated as [reproduced/failed_to_reproduce] using command: [run_command]",
+              "pass_number": <current_pass_number>,
+              "timestamp": "<current_iso8601_timestamp>"
+            }
+            ```
+
+    *   **If run with `--reattack`:** You must append or update the following on
+        the existing object (do not touch `repro_*` or `status`):
+
+        -   `"reattack_status"` (`"bypassed_patch"`, `"failed_to_bypass"`).
+            -   `"bypassed_patch"`: The new/modified PoC successfully bypassed
+                the patch and triggered the bug.
+            -   `"failed_to_bypass"`: The PoC was run but failed to bypass the
+                patch.
+        -   `"reattack_file_path"`
+        -   `"reattack_run_command"`
+        -   `"reattack_output"`
+        -   An entry to the `"history"` array:
+
+            ```json
+            {
+              "stage": "reattack",
+              "action": "reproduced",
+              "details": "Re-attack status evaluated as [bypassed_patch/failed_to_bypass] using command: [reattack_run_command]",
+              "pass_number": <current_pass_number>,
+              "timestamp": "<current_iso8601_timestamp>"
+            }
+            ```
 
 7.  **Criticism of Reproduction Validity:** To ensure the reproduction is a
     valid example of reproducing the reported vulnerability, have a subagent

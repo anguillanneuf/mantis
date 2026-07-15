@@ -11,8 +11,8 @@ description: >-
 ## System Goal
 
 Knowledge Base Synthesizer. Translates ephemeral insights from the learnings
-queue (`learnings.jsonl`) and structural analysis of the codebase into a
-canonical, interlinked Markdown Knowledge Base (`workspace/kb/`).
+queue (`workspace/learnings.jsonl`) and structural analysis of the codebase into
+a canonical, interlinked Markdown Knowledge Base (`workspace/kb/`).
 
 ## Command Definition
 
@@ -21,6 +21,28 @@ canonical, interlinked Markdown Knowledge Base (`workspace/kb/`).
     architecture, mapping specific entities (components), and categorizing
     historical vulnerability patterns.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/learnings.jsonl` (raw insights from the current round).
+    -   `workspace/historical_learnings.jsonl` (optional, past vulnerability
+        metadata).
+    -   Codebase directory structure and key source files.
+    -   Existing Markdown files in `workspace/kb/` (to validate/decay check).
+    -   `workspace/.mantis_state.json` (to retrieve pass count).
+-   **Writes**:
+    -   Markdown files under `workspace/kb/` (`architecture.md`,
+        `entities/[component_name].md`, `vulnerabilities/[CWE-ID].md`,
+        `index.md`).
+    -   Archives `workspace/learnings.jsonl` to
+        `workspace/archive/learnings/learnings_pass_${N}_${X}.jsonl`.
+-   **Preconditions**:
+    -   `workspace/learnings.jsonl` must exist.
+-   **Idempotency Guarantee**:
+    -   Transactional: moves `workspace/learnings.jsonl` to archive only after
+        programmatically verifying all KB Markdown updates were written
+        successfully. KB files are overwritten in-place.
+
 ## Instructions
 
 Analyze the codebase and pending learnings to construct a permanent,
@@ -28,12 +50,13 @@ Markdown-based memory for future agents.
 
 Execute the architecture stage as follows:
 
-1.  **Read the Inbox (`learnings.jsonl` and `historical_learnings.jsonl`):**
+1.  **Read the Inbox (`workspace/learnings.jsonl` and
+    `workspace/historical_learnings.jsonl`):**
 
-    -   Parse the contents of `learnings.jsonl` (and
-        `historical_learnings.jsonl` if it exists). Extract all trajectory
-        insights, discovered vulnerabilities, viable crash paths, and verified
-        patches.
+    -   Parse the contents of `workspace/learnings.jsonl` (and
+        `workspace/historical_learnings.jsonl` if it exists). Extract all
+        trajectory insights, discovered vulnerabilities, viable crash paths, and
+        verified patches.
 
 2.  **Analyze Source Code Boundaries:**
 
@@ -98,23 +121,20 @@ Execute the architecture stage as follows:
         updates were successfully written to disk and that cross-references are
         valid.
     -   **Commit by Moving:** Only after verifying synthesis success, move
-        `learnings.jsonl` to the archive directory:
+        `workspace/learnings.jsonl` to the archive directory:
         -   Ensure the target directory exists (e.g., `mkdir -p
             workspace/archive/learnings/`).
-        -   Determine the loop pass number `N` (from the `MANTIS_PASS_NUMBER`
-            env var, or fallback by scanning for directories matching either
-            `workspace/archive/findings_pass_N` or
-            `workspace/archive/loopN_findings` on disk, extracting the loop pass
-            integer `N` from each (e.g. by capturing the digits inside
-            `findings_pass_N` or `loopN_findings` using regex, rather than
-            assuming the digits appear only as a suffix at the end of the folder
-            name), finding the maximum number, and adding 1).
+        -   Determine the loop pass number `N` by reading `"pass_number"` from
+            `workspace/.mantis_state.json`. If missing or invalid, scan
+            `workspace/archive/` for folders matching `findings_pass_N` or
+            `loopN_findings` and resolve `N` to `max_found + 1`, defaulting to 1
+            if no archives exist.
         -   Determine the sub-index `X` by counting existing files matching
             `learnings_pass_${N}_*.jsonl` in `workspace/archive/learnings/` and
             adding 1.
-        -   Move the file: `mv learnings.jsonl
+        -   Move the file: `mv workspace/learnings.jsonl
             workspace/archive/learnings/learnings_pass_${N}_${X}.jsonl`.
-    -   If synthesis fails or is interrupted, leave `learnings.jsonl` intact in
-        its original location to ensure no data is lost.
+    -   If synthesis fails or is interrupted, leave `workspace/learnings.jsonl`
+        intact in its original location to ensure no data is lost.
 
 When complete, notify the user.

@@ -15,6 +15,31 @@ implementing their own deterministic orchestrator harness for Mantis Skills.
 Helps the user apply best practices for reliability, token efficiency, and
 custom environment integration.
 
+## Command Definition
+
+-   **Command:** `/mantis-pipeline-adapter`
+-   **Description:** Interactively guides the design and implementation of
+    custom deterministic orchestrator harnesses.
+
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   `schema.json` (as the canonical pipeline specification reference).
+    -   `workspace/findings/*.json` (as the State Store).
+    -   `workspace/learnings.jsonl` (to understand memory rotation).
+    -   User's interactive configuration input.
+-   **Writes**:
+    -   Outputs user-customized orchestrator harness code, configurations, or
+        architecture documentation.
+-   **Preconditions**:
+    -   User initiates interactive design session.
+-   **Idempotency Guarantee**:
+    -   As a consulting agent, it advises the user to implement idempotency in
+        their custom harness using three primary mechanisms: (1) state store
+        synchronization, (2) atomic transactional file/VCS operations, and (3)
+        proper locks (e.g. database/file level locks).
+
 ## Instructions
 
 Interactively guide the user in designing and building a deterministic pipeline
@@ -75,11 +100,11 @@ Use the following guidelines as your technical reference when advising the user.
     endpoints) that the LLM can simply invoke to perform text manipulation and
     state updates.
 5.  **State Store & Memory Rotation:** To prevent token bloat and infinite
-    loops, ephemeral queues (like `learnings.jsonl`) must be rotated. Upon
-    successful completion and verification of the Knowledge Base synthesis
+    loops, ephemeral queues (like `workspace/learnings.jsonl`) must be rotated.
+    Upon successful completion and verification of the Knowledge Base synthesis
     stage, the orchestrator should ensure the archive directory exists (e.g.,
-    `mkdir -p workspace/archive/learnings/`) and **move** `learnings.jsonl` to a
-    numbered archive (e.g.,
+    `mkdir -p workspace/archive/learnings/`) and **move**
+    `workspace/learnings.jsonl` to a numbered archive (e.g.,
     `workspace/archive/learnings/learnings_pass_${N}_${X}.jsonl` where `${N}` is
     the loop pass and `${X}` is a sub-index). If the synthesis fails, the active
     queue must be left intact to prevent data loss.
@@ -160,11 +185,11 @@ findings.
 Instead of asking the LLM to read all findings, merge them in context, and write
 them back, use the following pattern:
 
-1.  **Harness Action:** Reads all `*.json` files and prepares a summary list for
-    the LLM containing only key identifiers. To align with the standard schema,
-    map the `code_paths` array (which uses `"file:line"` format) to a simplified
-    summary for the LLM: `[ { "id": "UUID", "file": "path", "line": 12,
-    "snippet": "..." } ]`.
+1.  **Harness Action:** Reads all `workspace/findings/*.json` files and prepares
+    a summary list for the LLM containing only key identifiers. To align with
+    the standard schema, map the `code_paths` array (which uses `"file:line"`
+    format) to a simplified summary for the LLM: `[ { "id": "UUID", "file":
+    "path", "line": 12, "snippet": "..." } ]`.
 2.  **LLM Action:** Analyzes the summary and outputs a mapping of duplicates:
 
     ```json
@@ -180,20 +205,21 @@ them back, use the following pattern:
     *   Programmatically merges fields following the rules in
         [Mantis Deduplicator](../mantis-dedupe/SKILL.md) (e.g., union of
         `code_paths`, taking highest severity, concatenating history).
-    *   Updates `primary_uuid_1.json` on disk.
+    *   Updates `workspace/findings/primary_uuid_1.json` on disk.
     *   Ensures the trash directory exists (e.g., `mkdir -p
         workspace/findings/.trash/`).
-    *   Moves `duplicate_uuid_a.json` and `duplicate_uuid_b.json` to the trash
-        staging directory (`workspace/findings/.trash/`).
+    *   Moves `workspace/findings/duplicate_uuid_a.json` and
+        `workspace/findings/duplicate_uuid_b.json` to the trash staging
+        directory (`workspace/findings/.trash/`).
 
 #### C. Validation & Review Stages (Reviewer, Critic)
 
-*   **Harness Action:** For each finding `UUID.json`, pass only the relevant
-    code context and finding description to the LLM.
+*   **Harness Action:** For each finding `workspace/findings/<UUID>.json`, pass
+    only the relevant code context and finding description to the LLM.
 *   **LLM Action:** Output *only* a structured verification result (e.g.,
     `{"valid": true, "reason": "..."}`).
-*   **Harness Action (Deterministic):** Programmatically update the `UUID.json`
-    file with the validation status and reason.
+*   **Harness Action (Deterministic):** Programmatically update the
+    `workspace/findings/<UUID>.json` file with the validation status and reason.
 
 --------------------------------------------------------------------------------
 
@@ -247,3 +273,16 @@ Match task complexity with the appropriate model tier:
 Emphasize that using cheaper models for utility stages (like deduplication or
 calibration) must be validated with empirical evaluations against a benchmark
 dataset to ensure quality is not degraded.
+
+--------------------------------------------------------------------------------
+
+### 4. The Planning Stage and workspace/plan.json
+
+The planning stage plays a critical role in structuring the security campaign.
+The strategist (`/mantis-plan`) generates `workspace/plan.json` to define
+targeted investigations, context pointers, and specific questions for the
+auditor. The researcher (`/mantis-researcher`) reads `workspace/plan.json` at
+startup to guide its sweep. By decoupling strategy and execution via this
+structured contract, the orchestrator can easily direct subagents, parallelize
+sweeps, and maintain historical context across pipeline runs without repeating
+work.

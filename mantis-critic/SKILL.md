@@ -19,6 +19,26 @@ they remain triggerable in standard release and production configurations.
 -   **Description:** Assesses the production viability of findings, filtering
     out debug-only features and assertion traps.
 
+## Input/Output Contract
+
+-   **Reads**:
+    -   `workspace/findings/` (loads all findings regardless of status).
+    -   `workspace/kb/THREAT_MODEL.md` (if exists, to check deployment intent).
+    -   `workspace/.mantis_state.json` (to track current loop pass).
+    -   Target source code files (at paths/lines in `code_paths` with contextual
+        offset).
+-   **Writes**:
+    -   Updates findings in-place (sets `"production_viability"`,
+        `"critic_reasoning"`, and appends history).
+    -   Appends to `workspace/learnings.jsonl`.
+-   **Preconditions**:
+    -   Findings must exist in `workspace/findings/`.
+-   **Idempotency Guarantee**:
+    -   Overwrites viability fields in place. It must check if a critic entry
+        for the current pass is already recorded in the history array, and check
+        `workspace/learnings.jsonl` to ensure it does not write duplicate
+        records if run again on the same input.
+
 ## Instructions
 
 Evaluate validated findings to determine if they represent actionable security
@@ -101,16 +121,18 @@ Execute the critic evaluation as follows:
     {
       "stage": "critic",
       "action": "evaluated",
-      "details": "Determined production viability as [VIABLE/NON_VIABLE/SAMPLE_OR_TEST/CONDITIONAL_VIABLE] because [reason]"
+      "details": "Determined production viability as [VIABLE/NON_VIABLE/SAMPLE_OR_TEST/CONDITIONAL_VIABLE] because [reason]",
+      "pass_number": <current_pass_number>,
+      "timestamp": "<current_iso8601_timestamp>"
     }
     ```
 
 7.  **Append to Long-Term Memory:** For each finding you loaded (including
     `NON_VIABLE`, `SAMPLE_OR_TEST`, `CONDITIONAL_VIABLE`, `FALSE_POSITIVE`, and
     `NEEDS_RESEARCH`), append a single structured JSON line to a workspace
-    database file named `learnings.jsonl` (using append mode). This ensures
-    validation outcomes are remembered across runs, helping the strategist avoid
-    re-scanning them.
+    database file named `workspace/learnings.jsonl` (using append mode). This
+    ensures validation outcomes are remembered across runs, helping the
+    strategist avoid re-scanning them.
 
     -   **Memory Entry Format:** `{"title": "[finding_title]", "code_paths":
         ["[path1:line1]"], "status": "[NON_VIABLE / SAMPLE_OR_TEST /
