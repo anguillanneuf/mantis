@@ -68,32 +68,32 @@ deployment later in this guide.
 The pipeline is composed of sixteen distinct components (one supervisor and
 fifteen execution stages), maintaining state across a directory of finding files
 (`workspace/findings/*.json`). This entire process can be supervised
-autonomously by the overarching **`/mantis_meta_agent`**.
+autonomously by the overarching **`/mantis-meta-agent`**.
 
 ```mermaid
 graph TD
-    Meta["/mantis_meta_agent (Supervisor)"]
+    Meta["/mantis-meta-agent (Supervisor)"]
 
     subgraph "Continuous Review Loop"
-        Hist["/mantis_history (Optional)"]
-        Sum["/mantis_summarize (Optional)"]
-        Arch["/mantis_architecture"]
-        TM["/mantis_threat_model"]
-        Plan["/mantis_plan"]
-        Res["/mantis_researcher"]
-        Ded["/mantis_dedupe"]
-        Rev["/mantis_review"]
-        Cri["/mantis_critic"]
-        Rep["/mantis_reproduce"]
-        Cha["/mantis_chain"]
-        Pat["/mantis_patch"]
-        Cal["/mantis_calibrate"]
-        Ref["/mantis_reflect"]
-        Rpt["/mantis_report"]
+        Hist["/mantis-history (Optional)"]
+        Sum["/mantis-summarize (Optional)"]
+        Arch["/mantis-architecture"]
+        TM["/mantis-threat-model"]
+        Plan["/mantis-plan"]
+        Res["/mantis-researcher"]
+        Ded["/mantis-dedupe"]
+        Rev["/mantis-review"]
+        Cri["/mantis-critic"]
+        Rep["/mantis-reproduce"]
+        Cha["/mantis-chain"]
+        Pat["/mantis-patch"]
+        Cal["/mantis-calibrate"]
+        Ref["/mantis-reflect"]
+        Rpt["/mantis-report"]
     end
 
     FileHist[("historical_learnings.jsonl")]
-    FileSum[("mantis_summary.md")]
+    FileSum[("mantis-summary.md")]
     FileKB[/"workspace/kb/ (Markdown KB)"/]
     FilePlan[("plan.json")]
     FileFind[("workspace/findings/*.json")]
@@ -151,60 +151,60 @@ graph TD
     Rpt -.->|Generates| FileRpt
 ```
 
-1.  **`/mantis_meta_agent` (Supervisor):** A persistent, overarching agent that
+1.  **`/mantis-meta-agent` (Supervisor):** A persistent, overarching agent that
     launches the continuous loop, monitors execution, handles errors, reports
     findings, and archives the `workspace/findings/` directory between loops.
-2.  **`/mantis_history` (History Extractor):** An optional pre-processing step
+2.  **`/mantis-history` (History Extractor):** An optional pre-processing step
     that analyzes the repository's version control system (VCS) history to
     extract past vulnerabilities, security fixes, and vulnerability patterns,
     saving findings to `historical_learnings.jsonl`.
-3.  **`/mantis_summarize` (Summarizer):** An optional pre-processing step that
-    generates a `mantis_summary.md` for each directory, reading past
+3.  **`/mantis-summarize` (Summarizer):** An optional pre-processing step that
+    generates a `mantis-summary.md` for each directory, reading past
     vulnerabilities from `historical_learnings.jsonl` to enrich summaries and
     provide a quick reference map to optimize downstream planning and research.
-4.  **`/mantis_architecture` (Knowledge Base Architect):** Analyzes the codebase
+4.  **`/mantis-architecture` (Knowledge Base Architect):** Analyzes the codebase
     and clears the `learnings.jsonl` inbox to synthesize a permanent,
     interlinked Markdown Knowledge Base (`workspace/kb/`) detailing entities,
     data flows, and historical vulnerability classes.
-5.  **`/mantis_threat_model` (Threat Modeler):** Evaluates the entities and
+5.  **`/mantis-threat-model` (Threat Modeler):** Evaluates the entities and
     architecture defined in the KB to establish or refine a living
     `workspace/kb/THREAT_MODEL.md`, focusing on trust boundaries and attacker
     profiles.
-6.  **`/mantis_plan` (Strategist):** Scans workspace boundaries and reads the KB
+6.  **`/mantis-plan` (Strategist):** Scans workspace boundaries and reads the KB
     indices to output a targeted review strategy into `plan.json`, injecting
     specific `kb_references` file paths for context.
-7.  **`/mantis_researcher` (Mantis Researcher):** Executes file-by-file triage
+7.  **`/mantis-researcher` (Mantis Researcher):** Executes file-by-file triage
     and deep security flaw reviews, outputting hotspots as individual JSON files
     in `workspace/findings/`.
-8.  **`/mantis_dedupe` (Deduplicator):** Groups index-based duplicate findings,
+8.  **`/mantis-dedupe` (Deduplicator):** Groups index-based duplicate findings,
     merging records and deleting redundancies within `workspace/findings/`.
-9.  **`/mantis_review` (Validator):** Filters out false positives using strict
+9.  **`/mantis-review` (Validator):** Filters out false positives using strict
     pragmatic constraints, updating the status in
     `workspace/findings/<id>.json`.
-10. **`/mantis_critic` (Critic):** Verifies release-build crash reproducibility
+10. **`/mantis-critic` (Critic):** Verifies release-build crash reproducibility
     (ignoring debug/assert checks), updates production viability in
     `workspace/findings/<id>.json`, and appends false positives/non-viable paths
     to `learnings.jsonl`.
-11. **`/mantis_reproduce` (Proof-of-Concept Developer):** Writes
+11. **`/mantis-reproduce` (Proof-of-Concept Developer):** Writes
     Proof-of-Concept Reproduction Scripts (Repros) or raw payloads, executes
     them in isolated environments such as gVisor or Virtual Machines, and
     updates reproduction status in `workspace/findings/<id>.json`.
-12. **`/mantis_chain` (Vulnerability Chainer):** Analyzes individual validated
+12. **`/mantis-chain` (Vulnerability Chainer):** Analyzes individual validated
     findings and knowledge base primitives to identify and construct complex
     multi-step exploit chains, creating new "Super Findings" in
     `workspace/findings/`.
-13. **`/mantis_patch` (Patcher):** Generates and applies code fixes, runs
+13. **`/mantis-patch` (Patcher):** Generates and applies code fixes, runs
     post-patch validation tests inside the sandbox, updates patch status in
     `workspace/findings/<id>.json`, and appends logs to `learnings.jsonl`.
-14. **`/mantis_calibrate` (Risk Calibrator):** Calculates a final numerical
+14. **`/mantis-calibrate` (Risk Calibrator):** Calculates a final numerical
     Mantis Risk Score (1-10) for each finding in the workspace directory based
     on impact, evidence, and viability, appending the results directly to each
     `workspace/findings/<id>.json` file.
-15. **`/mantis_reflect` (Reflector):** Parses the execution trajectories of the
+15. **`/mantis-reflect` (Reflector):** Parses the execution trajectories of the
     agents from the current round, extracting false assumptions, tool failures,
     and successes, and appends these structured insights to the
     `learnings.jsonl` inbox.
-16. **`/mantis_report` (Reporter):** Generates a human-readable security review
+16. **`/mantis-report` (Reporter):** Generates a human-readable security review
     packet containing verified/reproduced findings, evidence, risk rationales,
     and patch information at `workspace/report/review_packet.md`.
 
@@ -256,11 +256,11 @@ recommendations in mind:
     "Interactive Mode".
 *   **How to use it:** Launch your CLI normally (e.g., type `agy` or `gemini` in
     your terminal). Then, from *inside* the interactive chat UI, type the slash
-    commands (e.g., `/mantis_plan`) individually. Do not use `--yolo` or
+    commands (e.g., `/mantis-plan`) individually. Do not use `--yolo` or
     `--dangerously-skip-permissions` flags when launching the CLI.
 *   **Why it matters:** The CLI will pause and prompt you for human approval
     before executing any sensitive command (especially when the
-    `/mantis_reproduce` or `/mantis_patch` agents attempt to run Docker sandbox
+    `/mantis-reproduce` or `/mantis-patch` agents attempt to run Docker sandbox
     executions or write to files). This allows you to inspect what the AI
     intends to run. To run without human approval you will require stronger
     boundaries to keep the agents contained.
@@ -270,7 +270,7 @@ recommendations in mind:
 *   **Why it matters:** AI models can sometimes generate code payloads that
     break the host. Run scripts *only* inside a sandbox if you aren't reading
     them.
-*   **Mantis Protection:** The `/mantis_reproduce` and `/mantis_patch` skills
+*   **Mantis Protection:** The `/mantis-reproduce` and `/mantis-patch` skills
     are explicitly instructed to execute payloads inside isolated container
     environments with networking disabled (`--network none`, for example).
 *   **Disclaimer:** While these instructions are designed to maintain isolation,
@@ -287,8 +287,8 @@ strategically pair the right AI model class with the specific task. You do not
 need to use the heaviest, most advanced frontier models for every stage:
 
 *   **Tier 1 (Triage & Deduplication):** For rapid classification sweeps (e.g.,
-    Wave 1 of `/mantis_researcher`) or clustering similar text patterns
-    (`/mantis_dedupe`), choose fast "flash" or "lite" tier models. These tasks
+    Wave 1 of `/mantis-researcher`) or clustering similar text patterns
+    (`/mantis-dedupe`), choose fast "flash" or "lite" tier models. These tasks
     do not require immense logic depth, just rapid text parsing, allowing you to
     parallelize massive file sweeps with zero bottleneck. Avoid models that are
     so low-powered they struggle with basic instructions, but don't slow your
@@ -299,9 +299,9 @@ need to use the heaviest, most advanced frontier models for every stage:
     frontier models.
 *   **Tier 2 (Deep Reasoning):** Save your most powerful, heavy-reasoning
     flagship models for the highly complex stages that demand deep context and
-    zero-shot problem solving: `/mantis_reproduce` (writing functional crash
-    reproducers) and `/mantis_patch` (writing side-effect-free codebase fixes).
-*   **Tip:** For very large repositories, configure your plan `/mantis_plan` to
+    zero-shot problem solving: `/mantis-reproduce` (writing functional crash
+    reproducers) and `/mantis-patch` (writing side-effect-free codebase fixes).
+*   **Tip:** For very large repositories, configure your plan `/mantis-plan` to
     focus on specific high-risk subfolders (e.g. `src/crypto/` or `api/`) to
     keep the scan focused and efficient.
 
@@ -311,7 +311,7 @@ works well and what does not.
 ### 4. Understanding False Positives (The "Negative Filter" Rule)
 
 *   **What to expect:** AI scanners can be overly enthusiastic. To address this,
-    the `/mantis_review` stage runs a strict validator applying 12 negative
+    the `/mantis-review` stage runs a strict validator applying 12 negative
     rules. (The 12 are by no means set in stone but must be adapted, reframed,
     or even split out into a different stage of their own if it suits your use
     case.)
@@ -344,46 +344,46 @@ CLI terminal.
 
     ```text
     # 0. (Optional) Analyze repository's version control system (VCS) history and extract past vulnerabilities
-    /mantis_history
+    /mantis-history
 
-    # 1. (Optional) Generate mantis_summary.md directory maps
-    /mantis_summarize
+    # 1. (Optional) Generate mantis-summary.md directory maps
+    /mantis-summarize
 
     # 2. Synthesize codebase structure and historical learnings into the Markdown Knowledge Base
-    /mantis_architecture
+    /mantis-architecture
 
     # 3. Iteratively develop the project's living threat model based on the KB
-    /mantis_threat_model
+    /mantis-threat-model
 
     # 4. Map target external boundary and build scanning roadmap, injecting KB references
-    /mantis_plan
+    /mantis-plan
 
     # 5. Run multi-threaded/sequential security flaw sweep using injected context
-    /mantis_researcher
+    /mantis-researcher
 
     # 6. Consolidate overlapping files and duplicate bugs
-    /mantis_dedupe
+    /mantis-dedupe
 
     # 7. Verify code validity & filter false positives
-    /mantis_review
+    /mantis-review
 
     # 8. Eliminate non-viable production issues
-    /mantis_critic
+    /mantis-critic
 
     # 9. Generate proof-of-concept crash reproducers and run them in sandboxes
-    /mantis_reproduce
+    /mantis-reproduce
 
     # 10. Combine validated individual findings into multi-step exploit chains
-    /mantis_chain
+    /mantis-chain
 
     # 11. Apply minimal fixes and verify they block the crash reproducer
-    /mantis_patch
+    /mantis-patch
 
     # 12. Calculate final matrix risk ratings and append to individual findings
-    /mantis_calibrate
+    /mantis-calibrate
 
     # 13. Extract insights from execution trajectories and append to the learnings inbox
-    /mantis_reflect
+    /mantis-reflect
 
     # 14. (Manual Step) Move workspace/findings/ to an archive directory before starting the next loop
     ```
@@ -392,13 +392,13 @@ CLI terminal.
 
 ## Building Deterministic Pipelines (Production-Grade)
 
-While the `/mantis_meta_agent` provides dynamic steering for exploratory
+While the `/mantis-meta-agent` provides dynamic steering for exploratory
 security research, we highly recommend wrapping the Mantis Skills in a
 **deterministic programmatic pipeline** (e.g., Python, Bash, Rust, or CI/CD
 workflow) for use in enterprise or production settings.
 
-By treating the individual skills (like `/mantis_researcher`, `/mantis_review`,
-and `/mantis_reproduce`) as microservices that read and write JSON state in the
+By treating the individual skills (like `/mantis-researcher`, `/mantis-review`,
+and `/mantis-reproduce`) as microservices that read and write JSON state in the
 `workspace/findings/` directory, you can build a rigid orchestrator that
 provides absolute reliability and strict security guarantees. Better yet, you
 should use more durable and resilient databases instead of json files on a
@@ -408,16 +408,16 @@ single machine.
 contracts defined in [schema.json](schema.json).** Of course, you can also
 modify the schema based on what works for you. There are few hard rules here.
 
-### The Pipeline Adapter Skill (/mantis_pipeline_adapter)
+### The Pipeline Adapter Skill (/mantis-pipeline-adapter)
 
 To get started on brainstorming your custom pipeline for high reliability, token
 efficiency (such as using UUID-based referencing), and adaptability to custom
 environments (via MCP), see the
-[Pipeline Adapter Guide](mantis_pipeline_adapter/SKILL.md).
+[Pipeline Adapter Guide](mantis-pipeline-adapter/SKILL.md).
 
 > **Note on Standalone vs. Harness Mode:** When using Mantis Skills directly
-> from the CLI in standalone mode, skills like `/mantis_review` or
-> `/mantis_patch` will instruct the LLM to write temporary reusable Python
+> from the CLI in standalone mode, skills like `/mantis-review` or
+> `/mantis-patch` will instruct the LLM to write temporary reusable Python
 > scripts to update the JSON state files. However, in a true programmatic
 > harness, your orchestrator should override these instructions and provide
 > native tool calls or functions for state management to avoid forcing the LLM
@@ -461,11 +461,11 @@ deterministic execution, you can build a pipeline that:
 1.  **Iterates Programmatically:** A harness loops over the workspace, invoking
     the static and dynamic skills via the CLI.
 2.  **Feeds Learnings Back:** The harness takes the resulting `learnings.jsonl`
-    file and invokes `/mantis_plan` to generate a newly updated `plan.json`,
+    file and invokes `/mantis-plan` to generate a newly updated `plan.json`,
     effectively allowing the AI to guide the deterministic runner on what to
     analyze next.
 3.  **Hardcodes the Execution Sandbox:** You can optionally configure the
-    deterministic versions of `/mantis_reproduce` and `/mantis_patch` to *only
+    deterministic versions of `/mantis-reproduce` and `/mantis-patch` to *only
     generate* the patch or script file, leaving the actual execution and grading
     to your harness in a strictly controlled sandbox.
 
@@ -477,7 +477,7 @@ A critical concept to understand when using AI for security research is
 **Non-Determinism**.
 
 *   **Coverage is not an absolute guarantee:** Even though Stage 2
-    (`/mantis_plan`) attempts to use programmatic shell scripts to map your
+    (`/mantis-plan`) attempts to use programmatic shell scripts to map your
     entire codebase, the agent running those scripts is fundamentally
     non-deterministic. It might occasionally fail to run the script correctly,
     hallucinate parameters, or skip steps.
@@ -567,7 +567,7 @@ to do this, including connecting the pipeline to **Google Cloud Pub/Sub**.
 
 1.  **Setup:** Create a Pub/Sub topic (e.g., `mantis-verified-vulns`) and grant
     your GCE VM's Service Account the `roles/pubsub.publisher` role.
-2.  **Hooking it up:** The `/mantis_meta_agent` skill can be instructed to
+2.  **Hooking it up:** The `/mantis-meta-agent` skill can be instructed to
     trigger notifications natively. You can instruct the meta-agent to run
     `gcloud pubsub topics publish mantis-verified-vulns --message="$(cat
     workspace/findings/<id>.json)"` whenever a security flaw is successfully
@@ -582,7 +582,7 @@ to do this, including connecting the pipeline to **Google Cloud Pub/Sub**.
 ## Meta-Agent Orchestration Pattern
 
 For a truly autonomous and persistent security operation, you can employ the
-**Meta-Agent Orchestration** pattern by invoking the `/mantis_meta_agent` skill.
+**Meta-Agent Orchestration** pattern by invoking the `/mantis-meta-agent` skill.
 In this setup, a high-level "Meta-Agent" (a long-lived Gemini or Antigravity CLI
 session) is responsible for driving the entire reviewing pipeline.
 
@@ -633,7 +633,7 @@ three tiers:
 
 2.  **Tier 2: Isolated "Unit" Evals**
 
-    *   **What it is:** Evaluating a single skill (e.g., `/mantis_patch`) in a
+    *   **What it is:** Evaluating a single skill (e.g., `/mantis-patch`) in a
         vacuum, entirely decoupled from the rest of the pipeline.
     *   **The Setup:** Feed a static, hardcoded input (a mocked `findings.json`
         and a target file) to a single skill and observe its output.
@@ -653,12 +653,12 @@ three tiers:
     *   **The Setup:** Curate a tiny dataset of 3-5 real-world, representative
         vulnerable repositories.
     *   **What to measure:** Binary outcomes. Did the final test suite pass? Did
-        `/mantis_reproduce` generate a working PoC? You could also perform human
+        `/mantis-reproduce` generate a working PoC? You could also perform human
         evaluation to see if there were novel vulnerabilities discovered.
 
 ### Measuring the "Unmeasurable"
 
-When evaluating intermediate stages (like `/mantis_researcher`), binary success
+When evaluating intermediate stages (like `/mantis-researcher`), binary success
 is difficult to define. Instead, track these proxy metrics to gauge skill
 degradation:
 
@@ -666,7 +666,7 @@ degradation:
     bad bash syntax, invalid file paths). A spike in tool errors after a prompt
     change indicates the skill's instruction set has degraded or that the
     prompts might need to be adapted to a new model or coding agent harness.
-*   **Trajectory Efficiency (Turns/Tokens):** If `/mantis_reproduce` used to
+*   **Trajectory Efficiency (Turns/Tokens):** If `/mantis-reproduce` used to
     write a PoC in 5 turns, and after a prompt tweak it takes 150 turns or loops
     repeatedly, that is a measurable regression in efficiency.
 *   **The "Give Up" Rate:** How often does the agent explicitly output phrases
@@ -739,9 +739,9 @@ token investment:
 
 *   **Symptom:** The loop keeps reviewing the same files and reporting identical
     bugs.
-*   **Solution:** Ensure `/mantis_architecture` completes successfully and
+*   **Solution:** Ensure `/mantis-architecture` completes successfully and
     writes its synthesized knowledge to the `workspace/kb/` directory. The
-    `/mantis_plan` strategist checks this Knowledge Base to dynamically skip
+    `/mantis-plan` strategist checks this Knowledge Base to dynamically skip
     already analyzed areas. Check that file permissions allow writing to
     `workspace/kb/`.
 

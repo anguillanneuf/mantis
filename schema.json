@@ -271,7 +271,7 @@
     "plan": {
       "type": "object",
       "title": "Planning State Schema",
-      "description": "Schema for plan.json, written by /mantis_plan and read by /mantis_researcher.",
+      "description": "Schema for plan.json, written by /mantis-plan and read by /mantis-researcher.",
       "properties": {
         "investigations": {
           "type": "array",
