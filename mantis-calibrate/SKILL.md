@@ -268,6 +268,12 @@ Execute the calibration as follows:
                             in a folder mapped to `"EXPOSED"` in the Threat
                             Model, unless the exploit explicitly escapes the
                             container boundary to the host node.
+                        -   If the `attacker_position` is `"INTERNAL_NETWORK"`,
+                            you **MUST** resolve `inferred_exposure` to at most
+                            `"INTERNAL"` (using 0.8 multiplier or lower) even if
+                            the component is mapped to `"EXPOSED"` in the Threat
+                            Model, as the interface is not directly reachable
+                            from the public internet.
                         -   If the `attacker_position` is `"EXTERNAL"`, you
                             **MUST** resolve `inferred_exposure` to `"EXPOSED"`
                             (using 1.0 multiplier) even if the component is
