@@ -69,7 +69,7 @@ graph TD
     FilePlan[("workspace/plan.json")]
     FileFind[("workspace/findings/*.json")]
     FileLearn[("workspace/learnings.jsonl")]
-    FileRpt[/"workspace/report/review_packet.md"/]
+    FileRpt[/"workspace/report/review_packet-latest.md"/]
 
     Meta --> Hist
     Hist --> Sum
@@ -178,7 +178,8 @@ graph TD
     `workspace/learnings.jsonl` inbox.
 16. **`/mantis-report` (Reporter):** Generates a human-readable security review
     packet containing verified/reproduced findings, evidence, risk rationales,
-    and patch information at `workspace/report/review_packet.md`.
+    and patch information at `workspace/report/review_packet-latest.md` (and
+    archives to `review_packet_pass_<N>.md`).
 
 --------------------------------------------------------------------------------
 

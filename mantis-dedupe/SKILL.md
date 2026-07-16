@@ -24,8 +24,9 @@ records.
 
 -   **Reads**:
     -   `workspace/findings/` (raw finding JSON files, ignoring `.trash/`).
-    -   `workspace/learnings.jsonl` (to skip findings already evaluated in the
-        current loop).
+    -   `workspace/archive/findings_pass_*/*.json` and
+        `workspace/archive/loop*_findings/*.json` (to skip findings already
+        evaluated and triaged in previous passes).
     -   `workspace/.mantis_state.json` (to track current loop pass).
 -   **Writes**:
     -   Moves duplicate findings to `workspace/findings/.trash/` after setting
@@ -37,10 +38,11 @@ records.
 -   **Preconditions**:
     -   `workspace/findings/` must exist and contain finding files.
 -   **Idempotency Guarantee**:
-    -   Cross-references against `workspace/learnings.jsonl` to filter loop
-        duplicates. Logs transactions to `workspace/.tx_log.jsonl` to support
-        tracking and potential rollbacks. Deterministic merging rules
-        implemented in `merge_findings.py`.
+    -   Cross-references against archived findings in `workspace/archive/` to
+        filter out any findings already processed in previous passes of this run
+        (regardless of status or viability). Logs transactions to
+        `workspace/.tx_log.jsonl` to support tracking and potential rollbacks.
+        Deterministic merging rules implemented in `merge_findings.py`.
 
 ## Instructions
 
@@ -49,36 +51,39 @@ the exact same security flaw or adjacent code paths.
 
 Execute your task as follows:
 
-1.  **Load Raw Findings & Current Loop Queue:**
+1.  **Load Raw Findings & Archived Findings Queue:**
 
     -   List the contents of the directory and read the files in
         `workspace/findings/`. If the directory is empty or does not exist,
         notify the user and exit.
     -   *Important:* Ignore hidden files and directories (such as the `.trash/`
         subdirectory) when listing or processing findings.
-    -   Check if `workspace/learnings.jsonl` exists in the workspace. If it
-        does, read its contents. This file represents findings and insights that
-        have already been evaluated by downstream agents (like Reviewer or
-        Patch) *within this current loop iteration* against this specific
-        version of the codebase.
+    -   Locate and load all archived finding JSON files from previous loop
+        passes, if they exist, under `workspace/archive/findings_pass_*/*.json`
+        and `workspace/archive/loop*_findings/*.json`. These files represent
+        vulnerabilities that have already been fully evaluated, triaged, and
+        potentially patched in previous passes.
     -   *Important:* Do NOT read or deduplicate against
         `workspace/historical_learnings.jsonl` (VCS history), as we want to
         catch regressions if old bugs were reintroduced.
 
-2.  **Filter Loop Duplicates:** Cross-reference the current findings against the
-    `workspace/learnings.jsonl` entries (using `code_paths` and `title`
-    similarities). If a current finding exactly matches a flaw that was already
-    processed in this loop (regardless of its status in
-    `workspace/learnings.jsonl`), you must **soft-delete the new finding file**
-    by ensuring the trash directory exists (e.g., `mkdir -p
-    workspace/findings/.trash/`). Before moving the file, update the duplicate
-    finding file to set `"status": "DUPLICATE"` and `"duplicate_of":
-    "<primary_uuid>"` (where primary_uuid is the UUID of the finding from
-    `workspace/learnings.jsonl` if available, or null). Then, move it to the
-    trash staging directory (`workspace/findings/.trash/`), log the transaction
-    in `workspace/.tx_log.jsonl` (action: `"loop_filter"`), and drop it from
-    your active list. This prevents the pipeline from getting stuck
-    re-evaluating the same issues.
+2.  **Filter Loop Duplicates (Previously Processed Findings):** Cross-reference
+    the current findings against the loaded archived findings (using
+    `code_paths` and `title` similarities). If a current finding matches any
+    archived finding from a previous pass (regardless of its status or
+    viability), you must **soft-delete the new finding file** by ensuring the
+    trash directory exists (e.g., `mkdir -p workspace/findings/.trash/`).
+    **Exception:** If the current finding has the **exact same UUID** as the
+    matching archived finding, do not filter it out; this indicates the finding
+    was intentionally copied back to `workspace/findings/` for a retry (e.g.,
+    re-reproduction or re-patching). Before moving a duplicate file (different
+    UUID), update the duplicate finding file to set `"status": "DUPLICATE"` and
+    `"duplicate_of": "<archived_uuid>"` (where archived_uuid is the UUID of the
+    matching finding from the archive). Then, move it to the trash staging
+    directory (`workspace/findings/.trash/`), log the transaction in
+    `workspace/.tx_log.jsonl` (action: `"loop_filter"`), and drop it from your
+    active list. This prevents the pipeline from getting stuck re-evaluating the
+    same issues.
 
 3.  **Filter Duplicate Findings in Current Batch:** Check the current findings
     against each other to find duplicates (using `code_paths` and `title`

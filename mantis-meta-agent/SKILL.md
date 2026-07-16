@@ -134,8 +134,10 @@ Execute your orchestration duties in a continuous loop:
         failures to the `workspace/learnings.jsonl` inbox.
 
     -   **Stage 14 (Report):** Call the `@mantis-report` subagent to generate
-        the human-readable review packet (`workspace/report/review_packet.md`)
-        containing only reproduced findings, evidence, and patches.
+        the human-readable review packet
+        (`workspace/report/review_packet-latest.md` and
+        `workspace/report/review_packet_pass_<N>.md`) containing only reproduced
+        findings, evidence, and patches.
 
     -   **Stage 15 (Archive & KB Verification):**
 

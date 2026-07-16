@@ -32,6 +32,10 @@ records to map the external boundary and formulate an adaptive review roadmap.
         timestamps/hashes.
 -   **Writes**:
     -   `workspace/plan.json`.
+    -   Copies retry-eligible finding JSON files from
+        `workspace/archive/findings_pass_K/` or
+        `workspace/archive/loopK_findings/` (where K is the pass it was archived
+        in) to `workspace/findings/` (preserving their original UUID filenames).
 -   **Preconditions**:
     -   Codebase must be accessible.
 -   **Idempotency Guarantee**:
@@ -95,38 +99,41 @@ Execute the planning stage as follows:
         You may generate the `workspace/plan.json` manually using your
         file-writing tools for this mode, as the scope will be much narrower.
 
-        -   **Targeted Re-Evaluation**: Review the KB index, entity files, and
-            the reproduction attempt cache file
+        -   **Targeted Re-Evaluation & Retries**: Review the KB index, entity
+            files, and the reproduction attempt cache file
             (`workspace/archive/.repro_attempts.json` if it exists). You must
-            schedule targeted investigations in `workspace/plan.json` for:
+            identify findings that need re-evaluation or retries:
 
-            1.  Findings marked `"NEEDS_RESEARCH"` (to gather missing context
-                and resolve them to `"VALID"` or `"FALSE_POSITIVE"`).
-            2.  Findings marked `"VALID"` or `"PROVISIONALLY_VALID"` where the
-                reproduction status (`repro_status`) is `"not_attempted"` (or
-                the `repro_status` key is missing entirely), or findings where
-                reproduction previously failed (`"failed_to_reproduce"`) but
-                have had **fewer than 2 total reproduction attempts**.
-                -   To check the attempt count efficiently: Look up the
-                    finding's `stable_key` in the
-                    `workspace/archive/.repro_attempts.json` cache (treating it
-                    as 0 if the file is missing or the key is not found).
-                    -   Compute `stable_key` as `normalized_title + "@" +
-                        primary_file_path`.
-                    -   `normalized_title` is the finding's title converted to
-                        lowercase with all non-alphanumeric characters removed.
-                    -   `primary_file_path` is the first entry in `code_paths`
-                        with any line number suffixes removed (e.g. `src/auth.c`
-                        from `src/auth.c:120`).
-                -   This retry mechanism provides resilience against transient
-                    environment issues or suboptimal initial prompts. Do **not**
-                    reschedule findings where `"status"` is `"FALSE_POSITIVE"`,
-                    or `"patch_status"` is `"VERIFIED_SECURE"`, or
-                    `"repro_status"` is `"reproduced"`, or those that have
-                    reached the 2-attempt limit in the cache, unless the target
-                    file has been modified in the current loop (VCS diff shows
-                    changes, or file modification timestamps/hashes have
-                    changed).
+            1.  **Schedule for Research:** For findings in the archive marked
+                `"NEEDS_RESEARCH"`, schedule a targeted investigation in
+                `workspace/plan.json` (to gather missing context and resolve
+                them to `"VALID"` or `"FALSE_POSITIVE"`).
+
+            2.  **Copy for Retry (Bypass Research):** For findings in the
+                archive marked `"VALID"` or `"PROVISIONALLY_VALID"` that are
+                eligible for retry, do **not** schedule them in
+                `workspace/plan.json`. Instead, **copy the finding JSON files
+                directly from the archive (e.g.,
+                `workspace/archive/findings_pass_K/<id>.json` or
+                `workspace/archive/loopK_findings/<id>.json`, where K is the
+                pass it was archived in) back to
+                `workspace/findings/<id>.json`** (preserving their UUIDs). A
+                finding is eligible for retry if:
+
+                -   The reproduction status (`repro_status`) is
+                    `"not_attempted"` (or missing), OR
+                -   Reproduction previously failed (`"failed_to_reproduce"`) but
+                    has had **fewer than 2 total reproduction attempts** (check
+                    attempt count in `workspace/archive/.repro_attempts.json`
+                    using the `stable_key`), OR
+                -   Patch verification failed (`patch_status` is
+                    `"VERIFICATION_FAILED"` or `"ERROR"`).
+                -   *Note:* Do **not** retry/copy findings where `"status"` is
+                    `"FALSE_POSITIVE"`, or `"patch_status"` is
+                    `"VERIFIED_SECURE"`, or `"repro_status"` is `"reproduced"`
+                    (unless patch failed as above), or those that have reached
+                    the 2-attempt limit in the cache, unless the target file has
+                    been modified in the current loop (VCS diff shows changes).
 
         -   **Context Injection (`kb_references`):** For each investigation you
             plan, you must determine which files in the `workspace/kb/`

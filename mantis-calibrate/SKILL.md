@@ -135,6 +135,15 @@ Execute the calibration as follows:
         -   2: Theoretical and highly complex (requires local access, strict
             timing).
         -   1: Strictly theoretical risk with no known exploit path.
+        -   **Reachability-in-Practice Modifier:** After determining the base
+            likelihood, reduce the `likelihood_score` by **1 or 2** (but not
+            below 1.0) if the exploit path relies on uncommon or non-default
+            usage patterns. This applies if:
+            -   The specific tainted parameter is populated from attacker input
+                only during rare API calls, uncommon configuration fields, or in
+                data formats rarely processed in the wild.
+            -   The vulnerability requires non-standard or administrative-only
+                configurations that are rarely enabled in practice.
     -   **Context Multiplier (0.1 - 1.0):**
         -   If `status` is **FALSE_POSITIVE** or **NEEDS_RESEARCH**, or if
             `production_viability` is **NON_VIABLE**: Drop this finding
@@ -171,6 +180,38 @@ Execute the calibration as follows:
                         `"PRIVILEGED"`
                 -   **Evaluate Attacker Position (declared in finding):**
                     -   Read `attacker_position` from the finding JSON.
+                    -   **Determine by Barrier, Not Transport:** The
+                        `attacker_position` must represent the outermost
+                        boundary that the **first untrusted principal** (the
+                        ultimate human attacker or external threat actor) must
+                        cross to reach the interface. Do not key on the
+                        transport protocol (e.g., HTTP, gRPC, IPC) or the
+                        immediate protocol peer.
+                        -   **Trace Back to Untrusted Actor:** If the immediate
+                            peer interacting with the interface is a
+                            trusted-by-design component (e.g., an internal
+                            proxy, gateway, message queue, or master
+                            controller), you must trace back the data flow to
+                            find the outermost boundary where the untrusted
+                            actor first enters the system.
+                        -   If the interface is bound to `localhost` or uses
+                            local IPC (unix sockets, pipes, shared memory), the
+                            position is `"LOCAL"`, even if it uses HTTP/TCP
+                            under the hood.
+                        -   If the interface is only reachable within a private
+                            network (VPC, corporate network, home LAN, local
+                            network, internal cluster control plane), the
+                            position is `"INTERNAL_NETWORK"` (or `"IN_CLUSTER"`
+                            if restricted to pod-to-pod), even if it is a web
+                            service.
+                        -   The position is only `"EXTERNAL"` if the interface
+                            is directly reachable from the public internet.
+                        -   If the interface requires physical contact, hardware
+                            interaction (e.g., JTAG, debug probes, chip
+                            decapping), or local wireless proximity (e.g., NFC,
+                            Bluetooth), the position must be
+                            `"PHYSICAL_TEMPORARY"` or `"PHYSICAL_LONG_TERM"`,
+                            regardless of the protocol used.
                     -   **Normalize Free-text:** If the value is present but is
                         a free-text string that does not exactly match one of
                         the valid enum values (e.g. legacy phrasings), you
@@ -289,17 +330,29 @@ Execute the calibration as follows:
 
 3.  **Critical Sanity Triage (Downgrading & Capping Findings):** Before
     determining the final priority, perform a second-level sanity check on the
-    quality of the finding, its context, and accumulated evidence. Check if the
-    `THREAT_MODEL.md` defines any `Calibration Overrides` (e.g., `LIFT_CAP:
-    PHYSICAL_LONG_TERM`). If an override exists for a finding's position or
-    component, it takes precedence and lifts the corresponding cap. Otherwise,
-    the caps and downgrades below override any upgrades calculated in Section 2
-    (including the Security Control Bypass upgrade), and you **MUST**
-    force-downgrade or cap the finding's priority and score if it meets any of
-    the following criteria. **Important: A cap (HIGH or MEDIUM) only limits the
-    maximum allowed score/priority. It must NOT upgrade a lower score/priority
-    (e.g., a finding with a score of 5.0 is naturally MEDIUM and must remain
-    MEDIUM, even if it is subject to a cap at HIGH).**
+    quality of the finding, its context, and accumulated evidence.
+
+    **Core Principle - Marginal Capability:** The final severity and priority of
+    a finding are strictly bounded by the *marginal capability* gained by the
+    attacker over their prerequisite position. If the exploit does not grant the
+    attacker significant new control, access, or capabilities beyond what is
+    already inherent to their starting position (or already possessed via
+    legitimate means), the finding must be capped or downgraded. **This
+    principle applies generally to all findings; the specific rules listed below
+    are common applications of this principle but are not exhaustive.**
+
+    Check if the `THREAT_MODEL.md` defines any `Calibration Overrides` (e.g.,
+    `LIFT_CAP: PHYSICAL_LONG_TERM`). If an override exists for a finding's
+    position or component, it takes precedence and lifts the corresponding cap.
+    Otherwise, the caps and downgrades below (and general applications of the
+    Marginal Capability principle) override any upgrades calculated in Section 2
+    (including the Security Control Bypass upgrade). You **MUST** apply the
+    specific caps and downgrades below, and should also apply the general
+    principle to cap or downgrade other findings that offer low marginal
+    capability. **Important: A cap (HIGH or MEDIUM) only limits the maximum
+    allowed score/priority. It must NOT upgrade a lower score/priority (e.g., a
+    finding with a score of 5.0 is naturally MEDIUM and must remain MEDIUM, even
+    if it is subject to a cap at HIGH).**
 
     **Precedence:** Evaluate ALL rules below. If multiple caps apply, the **most
     restrictive** wins (Force-LOW > cap-MEDIUM > cap-HIGH). Record every rule
@@ -335,12 +388,12 @@ Execute the calibration as follows:
         -   **Prerequisite Shell Access (Equivalent Primitives):** The attacker
             already possesses local shell access on the target container or host
             with the **same or higher** privilege level than the exploit
-            provides, rendering the gained access redundant (e.g., exploiting a
-            bug to get a standard user shell when already logged in as a
-            standard user, or exploiting a local buffer overflow to run commands
-            as root when already running as root). This does NOT apply to
-            low-to-high privilege escalation (e.g., standard user to root),
-            which should cap at MEDIUM.
+            provides, rendering the gained access redundant under the Principle
+            of Marginal Capability (e.g., exploiting a bug to get a standard
+            user shell when already logged in as a standard user, or exploiting
+            a local buffer overflow to run commands as root when already running
+            as root). This does NOT apply to low-to-high privilege escalation
+            (e.g., standard user to root), which should cap at MEDIUM.
 
         -   **Physical Long-Term / Laboratory Access:** If the attack requires
             long-term physical access to the device or specialized laboratory
@@ -348,16 +401,28 @@ Execute the calibration as follows:
             decapping). Force-downgrade to **LOW (2.0)** due to the extreme
             execution barrier and requirement for physical possession.
 
+        -   **Trusted-Controller-Mediated Interface (Zero Delta):** If the
+            vulnerable interface is reachable only from a component that holds
+            designed-in authoritative control over the target (e.g.,
+            orchestrator->worker, driver->device firmware, protocol
+            master->slave, hypervisor->guest, management plane->data plane
+            node), and the exploit grants **zero marginal capability** (i.e.,
+            the controller could already achieve the identical effect or level
+            of compromise via its standard, legitimate interface),
+            force-downgrade to **LOW (2.0)**. (This generalizes the *Standard
+            Host-to-Guest Attacks* rule below).
+
         -   **Standard Host-to-Guest Attacks:** If the attacker position is
             `HOST_SYSTEM` (host hypervisor attacking guest) on standard
             deployments (non-Confidential Computing). Force-downgrade to **LOW
-            (2.0)** (equivalent primitives), as the host OS/hypervisor already
-            possesses total control over the guest by design. **Default
-            assumption:** treat as non-Confidential Computing (this rule fires)
-            UNLESS the Threat Model, code path, or finding description
-            explicitly names Confidential Computing, guest enclaves, TEE, SEV,
-            TDX, SGX, or attestation (in which case apply the CC Host Attacks
-            cap-HIGH rule instead).
+            (2.0)** as the host OS/hypervisor already possesses total control
+            over the guest by design, meaning the exploit offers zero marginal
+            capability over the prerequisite position (equivalent primitives).
+            **Default assumption:** treat as non-Confidential Computing (this
+            rule fires) UNLESS the Threat Model, code path, or finding
+            description explicitly names Confidential Computing, guest enclaves,
+            TEE, SEV, TDX, SGX, or attestation (in which case apply the CC Host
+            Attacks cap-HIGH rule instead).
 
     *   **Force-Cap to HIGH (Cap at 7.9 / Maximum HIGH Priority):**
 
@@ -413,23 +478,56 @@ Execute the calibration as follows:
             against host-level compromise. (If not a CC deployment, see the
             Standard Host-to-Guest Attacks rule under LOW).
 
+        -   **Trusted-Controller-Mediated Interface (Critical Bypass):** If the
+            vulnerable interface is reachable only from a designed-in
+            authoritative controller, and the exploit allows that controller to
+            bypass target-side **documented security controls** or
+            **safety-of-life limits** it was designed to respect, cap at **HIGH
+            (7.9)**. (If the exploit allows lateral reach into a different trust
+            domain or achieves persistence surviving controller re-provisioning,
+            do not cap).
+
     *   **Force-Cap to MEDIUM (Cap at 5.9 / Maximum MEDIUM Priority):**
 
         -   **Local Attack Vector:** Vulnerabilities requiring local shell
             access (e.g., local privilege escalation, SUID exploitation) without
             VM escape. (Downgrade to LOW/2.0 if it only affects a single user's
             isolated data).
-        -   **Intra-Customer / Same-Tenant:** Attacks restricted to the same
-            tenant boundary the attacker already controls, with no cross-tenant
-            escalation or host compromise.
+        -   **Self-Contained Blast Radius:** If the maximum impact of the
+            exploit is confined to resources, data, or execution contexts that
+            the triggering principal already owns or has full designed-in
+            authority over — their own account, tenant, project, namespace,
+            container, VM, device, or single-user installation — and does not
+            cross any isolation boundary between mutually-distrusting
+            principals, cap at **MEDIUM (5.9)**.
+            -   The exploit may grant genuinely new capability within that
+                domain (e.g., API-user -> shell in their own container), but the
+                deployment's core isolation guarantees to other parties still
+                hold. This is a blast-radius bound, distinct from the Marginal
+                Capability principle (which bounds by new capability; this
+                bounds by who is affected).
+            -   Do **NOT** apply this cap if the exploit:
+                -   reaches another principal's resources (cross-tenant,
+                    cross-user, cross-account),
+                -   touches shared or multi-party infrastructure (shared cache,
+                    shared filesystem, operator control plane, co-tenant
+                    side-channel),
+                -   places the attacker's domain upstream of others (build node,
+                    CI runner, package registry, model-serving host — i.e., a
+                    supply-chain position), or
+                -   persists in a way that survives the principal's own resource
+                    lifecycle and could later affect a different principal
+                    reusing that slot.
         -   **Rarely Exposed Components:** Findings in components documented as
             'rarely exposed' or 'unlikely to be user controlled'.
         -   **Equivalent Primitives (No Boundary Breach):** The attacker profile
             capable of triggering the vulnerability already possesses equivalent
             access, privileges, or capabilities (primitives) through standard
             system features (e.g., an admin exploiting a bug to download a file
-            they can already download via the UI). Cap at **MEDIUM (5.9)** to
-            maintain visibility for defense-in-depth cleanup.
+            they can already download via the UI). Because this offers low
+            marginal capability over their prerequisite position, cap at
+            **MEDIUM (5.9)** to maintain visibility for defense-in-depth
+            cleanup.
         -   **Documented Insecure Configurations:** Non-default configurations
             that are explicitly documented in public manuals as insecure,
             diagnostic-only, or strictly non-production. Cap at **MEDIUM
@@ -445,6 +543,13 @@ Execute the calibration as follows:
             "HIGH"` (e.g., admin RCE on public portals). Cap at **MEDIUM
             (5.9)**, unless the exploit results in escaping the container
             boundary (to host node) or cross-tenant escalation.
+
+        -   **Trusted-Controller-Mediated Interface (Standard Bypass):** If the
+            vulnerable interface is reachable only from a designed-in
+            authoritative controller, and the exploit allows that controller to
+            bypass target-side **standard safety or sanity limits** (but not
+            critical safety-of-life or documented security controls) it was
+            expected to respect, cap at **MEDIUM (5.9)**.
 
 4.  **Determine Priority:**
 
