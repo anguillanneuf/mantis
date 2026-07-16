@@ -59,11 +59,11 @@ Execute the reporting stage as follows:
             include false positives, non-viable findings, findings that failed
             to reproduce, or ordinary statically confirmed findings that lack
             empirical execution traces.
-    -   **Severity Filtering:** Exclude findings with a priority of `"LOW"` or
-        `"INFO"` from the main report body. You must place these lower-priority
-        issues into a separate, dedicated "Appendix: Low and Info Severity
-        Findings" section at the very end of the report, keeping the main report
-        focused on high-risk issues.
+    -   **Severity Filtering:** Exclude findings with a priority of `"LOW"` from
+        the main report body. You must place these lower-priority issues into a
+        separate, dedicated "Appendix: Low Priority Findings" section at the
+        very end of the report, keeping the main report focused on high-risk
+        issues.
 
 2.  **Extract Key Artifacts:** For each reproduced finding, extract and format:
 

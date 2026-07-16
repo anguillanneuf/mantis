@@ -125,7 +125,7 @@ Execute the research stage as follows:
   "title": "Authorization bypass or Memory bounds violation in [function_name]",
   "description": "Thorough root cause analysis detailing why the function is flawed under untrusted input.",
   "impact": "Exploit outcome (e.g., Privilege escalation, Memory corruption, Data exfiltration).",
-  "severity": "CRITICAL / HIGH / MEDIUM / LOW / INFO",
+  "severity": "CRITICAL / HIGH / MEDIUM / LOW",
   "privileges_required": "NONE / LOW / HIGH",
   "attacker_position": "EXTERNAL / INTERNAL_NETWORK / IN_CLUSTER / LOCAL / HOST_SYSTEM / SUPPLY_CHAIN / PHYSICAL_TEMPORARY / PHYSICAL_LONG_TERM",
   "user_interaction": "NONE / REQUIRED",
